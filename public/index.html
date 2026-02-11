@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shemá - Sistema de Escalas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Auth / Checkout Screen -->
+    <div id="auth-screen" class="active">
+        <div class="auth-container">
+            <div class="auth-header">
+                <img src="logo.png" alt="Shemá Logo" class="auth-logo">
+            </div>
+
+            <div class="auth-box">
+                <form id="loginForm">
+                    <h2>Entrar</h2>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn-primary full-width">Acessar</button>
+                    <p class="auth-switch">Não tem conta? <a href="#" onclick="showRegister()">Cadastre-se</a></p>
+                </form>
+
+                <form id="registerForm" style="display: none;">
+                    <h2>Cadastro</h2>
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="regName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="regPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="regPassword" required>
+                    </div>
+
+                    <!-- Areas removed as per Phase 3 -->
+
+                    <button type="submit" class="btn-primary full-width">Cadastrar</button>
+                    <p class="auth-switch">Já tem conta? <a href="#" onclick="showLogin()">Entrar</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-screen">
+        <nav class="top-nav">
+            <div class="logo">
+                <img src="logo.png" alt="Shemá" class="nav-logo">
+            </div>
+            <ul class="nav-links">
+                <li class="active" onclick="showTab('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</li>
+                <li onclick="showTab('members')"><i class="fas fa-address-book"></i> Cadastros</li>
+                <li onclick="showTab('teamCalendar')"><i class="fas fa-calendar-alt"></i> Calendário</li>
+                <li onclick="showTab('trainings')"><i class="fas fa-play-circle"></i> Treinamentos</li>
+                <li onclick="showTab('logs')"><i class="fas fa-chart-bar"></i> Relatórios</li>
+            </ul>
+            <div class="user-profile">
+                <div class="user-info" style="text-align: right;">
+                    <span id="userName">Usuário</span>
+                    <small id="userRole">Voluntário</small>
+                </div>
+                <div class="avatar" id="userAvatar">U</div>
+                <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard -->
+            <section id="dashboard" class="tab-content active">
+                <div class="header-flex" style="margin-bottom: 20px;">
+                    <button class="btn-back-main" onclick="navigateBack()"><i class="fas fa-arrow-left"></i></button>
+                    <h1>Dashboard</h1>
+                </div>
+
+                <!-- Top Bar with Account Code and Filter -->
+                <div class="dash-top-bar">
+                    <div class="account-info">
+                        <small>Código da Conta</small>
+                        <div class="account-code" id="accountCodeDisplay">---</div>
+                        <button class="btn-primary btn-qr" onclick="generateQRCode()">
+                            <i class="fas fa-qrcode"></i> Gerar QR
+                        </button>
+                    </div>
+                    <div class="filter-box">
+                        <label>Filtrar por Setor:</label>
+                        <select id="statsFilter">
+                            <option value="all">Todos</option>
+                            <option value="Projeção">Projeção</option>
+                            <option value="Iluminação">Iluminação</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- QR Overlay -->
+                <div id="qrOverlay" class="qr-overlay">
+                    <h3>Escaneie para Cadastrar</h3>
+                    <div id="qrcode"></div>
+                    <button onclick="document.getElementById('qrOverlay').style.display='none'">Fechar</button>
+                </div>
+
+                <!-- Stats Cards Row -->
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-users"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Membros</span>
+                            <small>Total</small>
+                            <span class="stat-value" id="statMembers">0</span>
+                            <small class="stat-sub">Total cadastrados</small>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-secondary"><i class="fas fa-layer-group"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Equipes</span>
+                            <small>Ativas</small>
+                            <span class="stat-value" id="statTeams">0</span>
+                            <small class="stat-sub">Ativas</small>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-play-circle"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Treinamentos</span>
+                            <small>Disponíveis</small>
+                            <span class="stat-value" id="statTrainings">0</span>
+                            <small class="stat-sub">Disponíveis</small>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-secondary"><i class="fas fa-chart-line"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Participação</span>
+                            <small>Últimos 30 dias</small>
+                            <span class="stat-value" id="statParticipation">0%</span>
+                            <small class="stat-sub">Últimos 30 dias</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Membros por Equipe</h3>
+                        <canvas id="serviceChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Distribuição por Idade</h3>
+                        <canvas id="ageChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cadastros -->
+            <section id="members" class="tab-content">
+                <!-- Main Cadastros Dashboard View -->
+                <div id="cadastrosMainView">
+                    <!-- Header -->
+                    <div class="cadastros-header">
+                        <button class="btn-back-main" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <div class="cadastros-title">
+                            <h1>Cadastros</h1>
+                            <p>Gerencie e <strong>cadastre</strong> novos membros e equipes.</p>
+                        </div>
+                        <div class="cadastros-actions">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="cadastroSearch" placeholder="Buscar membros"
+                                    oninput="filterCadastros()">
+                            </div>
+                            <button class="btn-primary" onclick="showMemberForm()">
+                                <i class="fas fa-plus"></i> Novo Cadastro
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <!-- Stats Cards (8 Grid) -->
+                    <div class="cadastros-stats">
+                        <!-- Row 1 -->
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-users"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Membros</span>
+                                <span class="cad-stat-value" id="cadStatMembers">0</span>
+                                <small>Total cadastrados</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#fff8e1;"><i class="fas fa-layer-group"
+                                    style="color:#C9A227;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Equipes</span>
+                                <span class="cad-stat-value" id="cadStatTeams">0</span>
+                                <small>Equipes ativas</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-crown"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Líderes</span>
+                                <span class="cad-stat-value" id="cadStatLeaders">0</span>
+                                <small>Liderança total</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#fff8e1;"><i class="fas fa-building"
+                                    style="color:#C9A227;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Setores</span>
+                                <span class="cad-stat-value" id="cadStatSetores">5</span>
+                                <small>Setores cadastrados</small>
+                            </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-sitemap"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Setores</span>
+                                <span class="cad-stat-value" id="cadStatSetores2">5</span>
+                                <small>Setores cadastrados</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#fff8e1;"><i class="fas fa-briefcase"
+                                    style="color:#C9A227;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Funções</span>
+                                <span class="cad-stat-value" id="cadStatFuncoes">8</span>
+                                <small>Funções cadastradas</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card" onclick="showBirthdayModal()" style="cursor: pointer;">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-birthday-cake"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Aniversários</span>
+                                <span class="cad-stat-value" id="cadStatBirthdays">0</span>
+                                <small>Hoje</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card cad-stat-chart">
+                            <!-- Gender Chart -->
+                            <div style="width: 100%; height: 60px; position: relative;">
+                                <canvas id="cadGenderChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dual Panel: Members + Teams -->
+                    <div class="cadastros-panels">
+                        <!-- Members Panel -->
+                        <div class="cad-panel">
+                            <div class="cad-panel-header">
+                                <h3>Lista de Membros</h3>
+                                <button class="btn-primary btn-sm" onclick="showMemberForm()">
+                                    <i class="fas fa-plus"></i> Adicionar Membro
+                                </button>
+                            </div>
+                            <div class="cad-panel-count" id="memberCountInfo">Mostrando 0 de 0 resultados</div>
+                            <div class="cad-table-wrapper">
+                                <table class="cad-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>E-mail</th>
+                                            <th>Equipe</th>
+                                            <th>Setor</th>
+                                            <th>Função</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="memberTableBody">
+                                        <tr>
+                                            <td colspan="6" class="empty-state">Nenhum membro cadastrado</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="cad-pagination" id="memberPagination"></div>
+                            <div class="cad-panel-count cad-panel-count-bottom" id="memberCountBottom">Mostrando 0 de 0
+                                resultados</div>
+                        </div>
+
+                        <!-- Teams Panel -->
+                        <div class="cad-panel">
+                            <div class="cad-panel-header">
+                                <h3>Lista de Equipes</h3>
+                                <button class="btn-primary btn-sm" onclick="showTeamForm()">
+                                    <i class="fas fa-plus"></i> Adicionar Equipe
+                                </button>
+                            </div>
+                            <div class="cad-table-wrapper">
+                                <table class="cad-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Setor</th>
+                                            <th>Quantidade</th>
+                                            <th>Status</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="teamTableBody">
+                                        <tr>
+                                            <td colspan="5" class="empty-state">Nenhuma equipe cadastrada</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="cad-pagination" id="teamPagination"></div>
+                            <div class="cad-panel-count cad-panel-count-bottom" id="teamCountBottom">Nenhuma equipe
+                                cadastrada</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Member Registration Form View -->
+                <div id="memberFormView" style="display:none;">
+                    <button type="button" class="btn-back-view-text" onclick="closeMemberRegistration()">
+                        <i class="fas fa-chevron-left"></i> Cadastros > <strong>Adicionar Membro</strong>
+                    </button>
+
+                    <div class="registration-header-centered">
+                        <h2>Novo Membro</h2>
+                        <p>Preencha os campos abaixo para adicionar um <strong>novo membro</strong>.</p>
+                    </div>
+
+                    <div class="registration-card">
+                        <form id="memberFormDisplay" class="custom-form">
+                            <!-- Section: Personal Info -->
+                            <div class="form-section-header">
+                                <i class="fas fa-user-circle"></i> Informações Pessoais
+                            </div>
+
+                            <div class="form-layout-grid">
+                                <!-- Col 1: Photo -->
+                                <div class="photo-upload-wrapper">
+                                    <div class="photo-circle" id="memberPhotoPreview" onclick="triggerPhotoUpload()">
+                                        <i class="fas fa-user"></i>
+                                        <img id="photoImg" src="" style="display:none;" alt="Foto do Membro">
+                                        <div class="photo-overlay">
+                                            <i class="fas fa-camera"></i>
+                                        </div>
+                                        <!-- Hover Actions -->
+                                        <div class="photo-actions-hover is-empty" id="photoActionsHover">
+                                            <button type="button" class="btn-photo-action btn-add"
+                                                onclick="triggerPhotoUpload(event)"><i class="fas fa-plus"></i>
+                                                Adicionar Foto</button>
+                                            <button type="button" class="btn-photo-action btn-view"
+                                                onclick="viewPhoto(event)"><i class="fas fa-eye"></i> Ver</button>
+                                            <button type="button" class="btn-photo-action btn-edit"
+                                                onclick="triggerPhotoUpload(event)"><i class="fas fa-pen"></i>
+                                                Editar</button>
+                                        </div>
+                                    </div>
+                                    <span class="photo-label">Adicionar Foto</span>
+                                    <input type="file" id="memberPhotoInput" accept="image/*" style="display:none;"
+                                        onchange="handlePhotoSelect(event)">
+                                </div>
+
+                                <!-- Col 2: Fields -->
+                                <div class="personal-fields-grid">
+                                    <div class="form-group">
+                                        <input type="text" id="mNameDisp" required placeholder="Nome Completo"
+                                            class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="email" id="mEmailDisp" placeholder="E-mail" class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" id="mPhoneDisp" required placeholder="Telefone"
+                                            class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="date" id="mBirthDateDisp" required class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <select id="mGenderDisp" required class="input-rounded">
+                                            <option value="">Gênero</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Feminino">Feminino</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="password" id="mPasswordDisp" placeholder="Senha"
+                                            class="input-rounded">
+                                        <i class="fas fa-eye field-icon"
+                                            onclick="togglePasswordVisibility('mPasswordDisp')"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section: Team & Sector (Side by Side) -->
+                            <div class="bottom-sections-grid">
+                                <!-- Team Section -->
+                                <div class="sub-section">
+                                    <div class="form-section-header">
+                                        <i class="fas fa-users"></i> Equipe
+                                    </div>
+                                    <div class="sub-section-content">
+                                        <div class="form-group">
+                                            <select id="mTeamDisp" class="input-rounded">
+                                                <option value="">Selecionar Equipe</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <select id="mRoleDisp" class="input-rounded">
+                                                <option value="">Selecionar Função</option>
+                                                <option value="Lider">Líder</option>
+                                                <option value="Co-Lider">Co-Líder</option>
+                                                <option value="Membro">Membro</option>
+                                            </select>
+                                        </div>
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="mIncompleteDisp">
+                                            <span class="checkmark"></span>
+                                            Cadastro Incompleto
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Sector Section -->
+                                <div class="sub-section">
+                                    <div class="form-section-header">
+                                        <i class="fas fa-layer-group"></i> Setor
+                                    </div>
+                                    <div class="sub-section-content">
+                                        <div class="form-group">
+                                            <select id="mSectorDisp" class="input-rounded">
+                                                <option value="">Selecionar Setor</option>
+                                                <option value="Geral">Geral</option>
+                                                <option value="Kids">Kids</option>
+                                                <option value="Louvor">Louvor</option>
+                                                <option value="Midia">Mídia</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions-right">
+                                <button type="button" class="btn-cancel"
+                                    onclick="event.preventDefault(); closeMemberRegistration()">Cancelar</button>
+                                <button type="submit" class="btn-success-large">+ Adicionar Membro</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Team Registration Form View -->
+                <div id="teamFormView" style="display:none;">
+                    <button type="button" class="btn-back-view-text" onclick="hideTeamForm()">
+                        <i class="fas fa-chevron-left"></i> Equipes > <strong>Configurar Equipe</strong>
+                    </button>
+
+                    <div class="registration-header-row">
+                        <h2>Gestão de Equipes</h2>
+                        <button type="button" class="btn-back-view" onclick="hideTeamForm()">
+                            <i class="fas fa-arrow-left"></i> Voltar para Lista
+                        </button>
+                    </div>
+
+                    <div class="registration-card">
+                        <form id="teamFormDisplay" class="custom-form">
+                            <!-- Section: Team Config -->
+                            <div class="form-section-header">
+                                <i class="fas fa-users-cog"></i> Configuração da Equipe
+                            </div>
+
+                            <div class="form-layout-grid">
+                                <!-- Col 1: Photo -->
+                                <div class="photo-upload-wrapper">
+                                    <div class="photo-circle" id="teamPhotoPreview" onclick="triggerTeamPhotoUpload()">
+                                        <i class="fas fa-user"></i>
+                                        <img id="teamPhotoImg" src="" style="display:none;" alt="Foto da Equipe">
+                                        <div class="photo-overlay">
+                                            <i class="fas fa-camera"></i>
+                                        </div>
+                                    </div>
+                                    <span class="photo-label">Adicionar Foto</span>
+                                    <input type="file" id="teamPhotoInput" accept="image/*" style="display:none;"
+                                        onchange="handleTeamPhotoSelect(event)">
+                                </div>
+
+                                <!-- Col 2: Fields -->
+                                <div class="personal-fields-grid">
+                                    <div class="form-group">
+                                        <label>Nome da Área</label>
+                                        <select id="tmNameDisp" required class="input-rounded">
+                                            <option value="">Selecione a Área...</option>
+                                            <option value="Projeção">Projeção</option>
+                                            <option value="Iluminação">Iluminação</option>
+                                            <option value="Transmissão">Transmissão</option>
+                                            <option value="Fotografia">Fotografia</option>
+                                            <option value="Stories">Stories</option>
+                                            <option value="Sonoplastia">Sonoplastia</option>
+                                            <option value="Edição">Edição</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section: Leadership -->
+                            <div class="form-section-header">
+                                <i class="fas fa-user-shield"></i> Liderança
+                            </div>
+
+                            <div class="team-leader-layout">
+                                <div class="form-group">
+                                    <label>Líder Geral</label>
+                                    <select id="tmGeneralDisp" required class="input-rounded">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Líder Auxiliar 2</label>
+                                    <select id="tmSub2Disp" class="input-rounded">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="leader-grid">
+                                <div class="form-group">
+                                    <label>Líder Auxiliar 1</label>
+                                    <select id="tmSub1Disp" class="input-rounded">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Líder Auxiliar 2</label>
+                                    <select id="tmSub2Disp2" class="input-rounded">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Líder Auxiliar 3</label>
+                                    <select id="tmSub3Disp" class="input-rounded">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Section: Members -->
+                            <div class="form-section-header">
+                                <i class="fas fa-users"></i> Membros da Equipe
+                            </div>
+
+                            <div id="membersContainerDisp"></div>
+                            <button type="button" class="btn-outline full-width" onclick="addMemberRowDisp()"
+                                style="margin-top:10px; border-style:dashed;">
+                                <i class="fas fa-plus"></i> Adicionar Membro
+                            </button>
+                            <select id="memberSelectTemplateDisp" style="display:none">
+                                <option value="">Selecione um membro...</option>
+                            </select>
+
+                            <div class="form-actions-right">
+                                <button type="button" class="btn-cancel"
+                                    onclick="event.preventDefault(); hideTeamForm()">Cancelar</button>
+                                <button type="submit" class="btn-success-large">Salvar Equipe</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Team Calendar -->
+            <section id="teamCalendar" class="tab-content">
+                <header id="calendarHeader">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="btn-back-main" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h1>Calendário da Equipe</h1>
+                    </div>
+                    <button class="btn-primary" id="btnNewEvent" onclick="showEventForm()">
+                        <i class="fas fa-plus"></i> Novo Registro
+                    </button>
+                    <button class="btn-back-view" id="btnBackToCalendar" onclick="hideEventForm()"
+                        style="display:none;">
+                        <i class="fas fa-arrow-left"></i> Voltar ao Calendário
+                    </button>
+                </header>
+
+                <!-- Calendar View with Side Panel -->
+                <div id="calendarView">
+                    <div class="calendar-layout">
+                        <!-- Left: Calendar Grid -->
+                        <div class="calendar-main">
+                            <div class="calendar-nav">
+                                <button class="btn-outline" onclick="changeMonth(-1)"><i
+                                        class="fas fa-chevron-left"></i></button>
+                                <h2 id="calendarMonthLabel"></h2>
+                                <button class="btn-outline" onclick="changeMonth(1)"><i
+                                        class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="calendar-weekdays">
+                                <span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span>
+                            </div>
+                            <div class="calendar-grid" id="calendarGrid"></div>
+                        </div>
+
+                        <!-- Right: Event Detail Panel -->
+                        <div class="calendar-side-panel" id="dayDetailPanel">
+                            <div class="side-panel-header">
+                                <h3>Detalhes do Evento</h3>
+                            </div>
+                            <div id="dayDetailContent">
+                                <div class="side-panel-empty">
+                                    <i class="fas fa-calendar-day"></i>
+                                    <p>Selecione um dia no calendário para ver os eventos</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Form -->
+                <div id="eventFormView" style="display:none;">
+                    <div class="registration-form-container">
+                        <form id="eventFormDisplay" class="custom-form">
+                            <div class="form-section">
+                                <h3><i class="fas fa-calendar-plus"></i> Informações do Evento</h3>
+                                <div class="form-group">
+                                    <label>Equipe *</label>
+                                    <select id="evTeamSelect" required>
+                                        <option value="">Selecione a equipe...</option>
+                                    </select>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Nome do Evento *</label>
+                                        <input type="text" id="evName" required placeholder="Ex: Ensaio de louvor">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Horário *</label>
+                                        <input type="text" id="evTime" required placeholder="Ex: 19:00">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Data *</label>
+                                    <input type="date" id="evDate" required>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3><i class="fas fa-redo"></i> Recorrência</h3>
+                                <div class="recurrence-options">
+                                    <button type="button" class="rec-btn active" data-rec="none"
+                                        onclick="setRecurrence('none')">Nenhuma</button>
+                                    <button type="button" class="rec-btn" data-rec="weekly"
+                                        onclick="setRecurrence('weekly')">Semanal</button>
+                                    <button type="button" class="rec-btn" data-rec="monthly"
+                                        onclick="setRecurrence('monthly')">Mensal</button>
+                                    <button type="button" class="rec-btn" data-rec="custom"
+                                        onclick="setRecurrence('custom')">Personalizado</button>
+                                </div>
+                                <div id="recurrenceDetails" style="display:none; margin-top:15px;">
+                                    <div class="form-row">
+                                        <div class="form-group" id="recIntervalGroup" style="display:none;">
+                                            <label>Repetir a cada (dias)</label>
+                                            <input type="number" id="evRecInterval" min="1" value="7"
+                                                placeholder="Ex: 14">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Data Final da Recorrência</label>
+                                            <input type="date" id="evRecEnd">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3><i class="fas fa-tasks"></i> Funções e Responsáveis</h3>
+                                <div id="rolesContainer"></div>
+                                <button type="button" class="btn-outline full-width" onclick="addRoleRow()"
+                                    style="margin-top:10px; border-style:dashed;">
+                                    <i class="fas fa-plus"></i> Adicionar Função
+                                </button>
+                                <select id="roleMemberTemplate" style="display:none;">
+                                    <option value="">Selecione um membro...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-actions-bar">
+                                <button type="button" class="btn-outline" onclick="hideEventForm()">Cancelar</button>
+                                <button type="submit" class="btn-primary-large">Salvar Evento</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section id="trainings" class="tab-content">
+                <header id="trainingHeader">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="btn-back-main" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h1>Treinamentos</h1>
+                    </div>
+                    <div id="trainingActions" style="display:flex; gap:10px;">
+                        <button class="btn-primary" onclick="showFolderForm()"><i class="fas fa-folder-plus"></i> Nova
+                            Pasta</button>
+                        <button class="btn-primary" onclick="showTrainingForm()"><i class="fas fa-video"></i> Novo
+                            Vídeo</button>
+                    </div>
+                    <button class="btn-back-view" id="btnBackToTrainings" onclick="hideTrainingForms()"
+                        style="display:none;">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                </header>
+
+                <!-- Breadcrumb -->
+                <div id="trainingBreadcrumb" style="margin-bottom:20px; color:#aaa; font-size:0.9rem;">
+                    <span onclick="loadTrainings()" style="cursor:pointer; color:var(--primary);">Início</span>
+                </div>
+
+                <!-- Folders/Videos Grid View -->
+                <div id="trainingsGridView">
+                    <div class="folders-grid" id="trainingFolders">
+                        <!-- Dynamic Grid -->
+                    </div>
+                </div>
+
+                <!-- Folder Creation View -->
+                <div id="folderFormView" style="display:none;">
+                    <div class="registration-form-container">
+                        <form id="folderFormDisplay" class="custom-form">
+                            <div class="form-section">
+                                <h3><i class="fas fa-folder-plus"></i> Nova Pasta de Treinamento</h3>
+                                <div class="form-group">
+                                    <label>Nome da Pasta</label>
+                                    <input type="text" id="fNameDisp" required
+                                        placeholder="Ex: Treinamento de Sonoplastia">
+                                </div>
+                            </div>
+                            <div class="form-actions-bar">
+                                <button type="button" class="btn-outline"
+                                    onclick="hideTrainingForms()">Cancelar</button>
+                                <button type="submit" class="btn-primary-large">Criar Pasta</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Training Video Creation View -->
+                <div id="trainingFormView" style="display:none;">
+                    <div class="registration-form-container">
+                        <form id="trainingFormDisplay" class="custom-form">
+                            <div class="form-section">
+                                <h3><i class="fas fa-video"></i> Novo Vídeo de Treinamento</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Título do Vídeo</label>
+                                        <input type="text" id="tTitleDisp" required
+                                            placeholder="Ex: Aula 01 - Introdução">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tipo</label>
+                                        <select id="tTypeDisp">
+                                            <option value="youtube">YouTube</option>
+                                            <option value="link">Outro Link</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>URL (Link do vídeo)</label>
+                                    <input type="url" id="tUrlDisp" required placeholder="https://youtube.com/...">
+                                </div>
+                                <div class="form-group">
+                                    <label>Pasta de Destino (Opcional)</label>
+                                    <input type="text" id="tFolderDisp" list="folderListDisp"
+                                        placeholder="Deixe em branco para a pasta atual">
+                                    <datalist id="folderListDisp"></datalist>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <textarea id="tDescDisp" placeholder="Breve descrição do conteúdo"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-actions-bar">
+                                <button type="button" class="btn-outline"
+                                    onclick="hideTrainingForms()">Cancelar</button>
+                                <button type="submit" class="btn-primary-large">Salvar Vídeo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inline Video Player View -->
+                <div id="videoPlayerView" style="display:none;">
+                    <div class="video-player-container">
+                        <div class="video-player-header">
+                            <h2 id="videoPlayerTitle">Título do Vídeo</h2>
+                            <button class="btn-back-view" onclick="closeVideoPlayer()">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </button>
+                        </div>
+                        <div class="video-player-wrapper">
+                            <div id="youtubePlayer"></div>
+                        </div>
+                        <div class="video-progress-section">
+                            <div class="video-progress-bar-container">
+                                <div class="video-progress-bar" id="videoProgressBar" style="width: 0%"></div>
+                            </div>
+                            <div class="video-progress-info">
+                                <span id="videoWatchedTime">0:00</span>
+                                <span id="videoProgressPercent">0% assistido</span>
+                                <span id="videoTotalTime">0:00</span>
+                            </div>
+                        </div>
+                        <div class="video-description-box" id="videoDescriptionBox">
+                            <h3><i class="fas fa-info-circle"></i> Descrição</h3>
+                            <p id="videoPlayerDescription">Sem descrição</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs -->
+            <section id="logs" class="tab-content">
+                <header class="header-flex">
+                    <button class="btn-back-main" onclick="navigateBack()"><i class="fas fa-arrow-left"></i></button>
+                    <h1>Logs do Sistema</h1>
+                    <button class="btn-secondary" onclick="loadLogs()"><i class="fas fa-sync"></i> Atualizar</button>
+                </header>
+                <div class="team-list" id="logsList">
+                    <!-- Dynamic Logs -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmModal" class="confirm-modal-overlay" style="display:none;">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 id="confirmModalTitle">Confirmar</h3>
+            <p id="confirmModalMessage">Tem certeza?</p>
+            <div class="confirm-modal-actions">
+                <button class="btn-outline" id="confirmModalCancel">Cancelar</button>
+                <button class="btn-danger" id="confirmModalConfirm">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Birthday Modal -->
+    <div id="birthdayModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBirthdayModal()">&times;</span>
+            <h2>Aniversariantes de Hoje <i class="fas fa-birthday-cake" style="color:#1EBE5D"></i></h2>
+            <div id="birthdayList" class="birthday-list">
+                <p class="empty-state">Nenhum aniversariante hoje.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4.0"></script>
+    <div style="position:fixed; bottom:5px; right:5px; font-size:10px; color:#ccc; z-index:9999;">v4.0</div>
+</body>
+
+</html>
