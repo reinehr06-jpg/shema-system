@@ -3570,7 +3570,7 @@ function filterConnections() {
 
 // ===== MINHA CONTA FUNCTIONS =====
 
-async function loadAccountPage() {
+window.loadAccountPage = async function() {
     // Reset: show grid, hide detail views
     const overview = document.getElementById('account-overview');
     if (overview) overview.style.display = '';
@@ -3626,7 +3626,7 @@ window.filterAccountCards = function(value) {
 }
 
 // --- GERAL ---
-async function loadAccountGeral() {
+window.loadAccountGeral = async function() {
     try {
         const res = await fetch(`${API_URL}/organization`);
         const org = await res.json();
@@ -3667,7 +3667,7 @@ async function loadAccountGeral() {
     } catch (e) { console.error('Load geral error:', e); }
 }
 
-async function saveAccountGeral() {
+window.saveAccountGeral = async function() {
     try {
         const data = {
             name: document.getElementById('org-name').value,
@@ -3710,7 +3710,7 @@ window.removeOrgLogo = async function () {
 };
 
 // --- SEGURANÇA ---
-async function loadAccountSeguranca() {
+window.loadAccountSeguranca = async function() {
     // Sessions
     try {
         const sessRes = await fetch(`${API_URL}/account/sessions`);
@@ -3798,7 +3798,7 @@ window.endAllSessions = async function () {
 };
 
 // --- PLANO ---
-async function loadAccountPlano() {
+window.loadAccountPlano = async function() {
     try {
         const res = await fetch(`${API_URL}/account/plan`);
         const plan = await res.json();
@@ -3900,7 +3900,7 @@ window.disconnectWhatsApp = async function () {
 };
 
 // --- USUÁRIOS ---
-async function loadAccountUsuarios() {
+window.loadAccountUsuarios = async function() {
     try {
         const res = await fetch(`${API_URL}/users`);
         const usersList = await res.json();
@@ -4007,7 +4007,7 @@ window.deactivateUser = async function (id, currentStatus) {
 };
 
 // --- PREFERÊNCIAS ---
-async function loadAccountPreferencias() {
+window.loadAccountPreferencias = async function() {
     try {
         const res = await fetch(`${API_URL}/account/settings`);
         const s = await res.json();
