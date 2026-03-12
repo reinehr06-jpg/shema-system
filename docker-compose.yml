@@ -25,10 +25,14 @@ services:
     restart: always
     ports:
       - "8080:8080"
-    env_file:
-      - ./evolution-api/.env
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=CHANGE_THIS_API_KEY
+      - DATABASE_ENABLED=false
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/1
     volumes:
-      - ./evolution-api/instances:/evolution/instances
+      - evolution_instances:/evolution/instances
     networks:
       - shema-network
 
@@ -58,3 +62,4 @@ networks:
 
 volumes:
   shema_db_data:
+  evolution_instances:
