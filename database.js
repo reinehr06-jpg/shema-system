@@ -903,7 +903,14 @@ const messageHistory = {
     hasSentBirthdayThisYear: (memberId, year) => db.prepare(`SELECT COUNT(*) as c FROM message_history WHERE member_id = ? AND category = 'aniversario' AND strftime('%Y', sent_at) = ?`).get().c > 0
 };
 
-module.exports = { db, users, members, teams, serviceRecords, trainings, folders, stats, systemLogs, watchProgress, teamEvents, eventScales, scaleAssignments, availabilities, sectors, whatsappInstances, roles, eventAssignments, eventAvailability, organization, accountSettings, loginHistory, activeSessions, googleCalendar, messageTemplates, messageHistory };
+try { db.prepare(`CREATE TABLE IF NOT EXISTS apple_calendar_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    apple_id TEXT,
+    app_password TEXT,
+    sync_enabled INTEGER DEFAULT 0,
+    last_sync DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`).run(); } catch (e) { }
 
 // Seed templates se estiver vazio
 try {
@@ -911,3 +918,24 @@ try {
 } catch (e) {
     console.error('Falha ao rodar seed de message templates:', e);
 }
+
+// Models
+// ... (previous models)
+
+const appleCalendar = {
+    get: () => db.prepare('SELECT * FROM apple_calendar_settings LIMIT 1').get(),
+    upsert: (data) => {
+        const existing = db.prepare('SELECT id FROM apple_calendar_settings LIMIT 1').get();
+        if (existing) {
+            const fields = Object.keys(data).map(k => `${k} = ?`).join(', ');
+            return db.prepare(`UPDATE apple_calendar_settings SET ${fields} WHERE id = ?`).run(...Object.values(data), existing.id);
+        } else {
+            const keys = Object.keys(data).join(', ');
+            const placeholders = Object.keys(data).map(() => '?').join(', ');
+            return db.prepare(`INSERT INTO apple_calendar_settings (${keys}) VALUES (${placeholders})`).run(...Object.values(data));
+        }
+    },
+    delete: () => db.prepare('DELETE FROM apple_calendar_settings').run()
+};
+
+module.exports = { db, users, members, teams, serviceRecords, trainings, folders, stats, systemLogs, watchProgress, teamEvents, eventScales, scaleAssignments, availabilities, sectors, whatsappInstances, roles, eventAssignments, eventAvailability, organization, accountSettings, loginHistory, activeSessions, googleCalendar, appleCalendar, messageTemplates, messageHistory };

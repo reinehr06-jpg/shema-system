@@ -3888,6 +3888,9 @@ window.loadAccountConexoes = async function() {
         if (typeof loadGoogleCalendarStatus === 'function') {
             loadGoogleCalendarStatus();
         }
+        if (typeof loadAppleCalendarStatus === 'function') {
+            loadAppleCalendarStatus();
+        }
     } catch (e) { console.error('Account connections error:', e); }
 }
 
@@ -4081,32 +4084,34 @@ window.showRoleForm = function () {
 };
 
 // ==========================================
-// Google Calendar Integration Functions
+// Google & Apple Calendar Integration
 // ==========================================
 
 window.loadGoogleCalendarStatus = async () => {
-    const statusDisp = document.getElementById('gcal-status-display');
-    const btnConnect = document.getElementById('btn-gcal-connect');
-    const connectedActions = document.getElementById('gcal-connected-actions');
-    
-    if(!statusDisp) return;
+    const statusText = document.getElementById('gcal-status-text');
+    const badge = document.getElementById('gcal-badge');
+    const connectBtn = document.getElementById('gcal-connect-btn');
+    const disconnectBtn = document.getElementById('gcal-disconnect-btn');
+
+    if (!statusText) return;
 
     try {
-        statusDisp.textContent = 'Verificando conexão...';
         const res = await fetch(`${API_URL}/google-calendar/status`);
         const data = await res.json();
-        
+
         if (data.connected) {
-            statusDisp.innerHTML = `<span style="color:#16a34a;"><i class="fas fa-check-circle"></i> Conectado.</span><br><small style="font-weight:normal;color:#aaa;">Sincronizado em: ${data.last_sync ? new Date(data.last_sync).toLocaleString('pt-BR') : 'Nunca'}</small>`;
-            btnConnect.style.display = 'none';
-            connectedActions.style.display = 'flex';
+            statusText.innerHTML = `Conectado como <strong>Google User</strong>`;
+            if (badge) badge.style.display = 'inline-flex';
+            if (connectBtn) connectBtn.style.display = 'none';
+            if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
         } else {
-            statusDisp.innerHTML = `<span style="color:#dc2626;"><i class="fas fa-times-circle"></i> Não conectado.</span>`;
-            btnConnect.style.display = 'inline-block';
-            connectedActions.style.display = 'none';
+            statusText.textContent = 'Não conectado';
+            if (badge) badge.style.display = 'none';
+            if (connectBtn) connectBtn.style.display = 'inline-flex';
+            if (disconnectBtn) disconnectBtn.style.display = 'none';
         }
     } catch (e) {
-        statusDisp.textContent = 'Erro ao carregar status.';
+        console.error('Error loading Google status:', e);
     }
 };
 
@@ -4117,15 +4122,15 @@ window.connectGoogleCalendar = async () => {
         if (data.url) {
             window.location.href = data.url;
         } else {
-            throw new Error(data.error || 'Erro ao gerar link de autenticação.');
+            showToast('Erro ao gerar link do Google.', 'error');
         }
     } catch (e) {
-        showToast(e.message, 'error');
+        showToast('Erro ao conectar com Google.', 'error');
     }
 };
 
 window.disconnectGoogleCalendar = async () => {
-    if (!confirm('Deseja realmente desconectar a conta do Google? Esta ação não excluirá os eventos já salvos no sistema.')) return;
+    if (!confirm('Deseja desconectar sua conta Google?')) return;
     try {
         await fetch(`${API_URL}/google-calendar/disconnect`, { method: 'POST' });
         showToast('Google Calendar desconectado.', 'success');
@@ -4135,9 +4140,81 @@ window.disconnectGoogleCalendar = async () => {
     }
 };
 
+// --- APPLE CALENDAR ---
+
+window.loadAppleCalendarStatus = async () => {
+    const statusText = document.getElementById('apple-cal-status-text');
+    const badge = document.getElementById('apple-cal-badge');
+    const connectBtn = document.getElementById('apple-connect-btn');
+    const disconnectBtn = document.getElementById('apple-disconnect-btn');
+
+    if (!statusText) return;
+
+    try {
+        const res = await fetch(`${API_URL}/apple-calendar/status`);
+        const data = await res.json();
+
+        if (data.connected) {
+            statusText.innerHTML = `Conectado como <strong>${data.apple_id}</strong>`;
+            if (badge) badge.style.display = 'inline-flex';
+            if (connectBtn) connectBtn.style.display = 'none';
+            if (disconnectBtn) disconnectBtn.style.display = 'inline-flex';
+        } else {
+            statusText.textContent = 'Não conectado';
+            if (badge) badge.style.display = 'none';
+            if (connectBtn) connectBtn.style.display = 'inline-flex';
+            if (disconnectBtn) disconnectBtn.style.display = 'none';
+        }
+    } catch (e) {
+        console.error('Error loading Apple status:', e);
+    }
+};
+
+window.connectAppleCalendar = () => {
+    const modal = document.getElementById('apple-cal-modal');
+    if (modal) modal.style.display = 'block';
+};
+
+window.saveAppleCalendar = async () => {
+    const email = document.getElementById('apple-cal-email').value;
+    const pass = document.getElementById('apple-cal-apppass').value;
+
+    if (!email || !pass) return showToast('Preencha e-mail e senha de app.', 'warning');
+
+    try {
+        const res = await fetch(`${API_URL}/apple-calendar/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apple_id: email, app_password: pass })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('Apple Calendar conectado com sucesso!', 'success');
+            document.getElementById('apple-cal-modal').style.display = 'none';
+            loadAppleCalendarStatus();
+        } else {
+            showToast(data.error || 'Erro ao conectar.', 'error');
+        }
+    } catch (e) {
+        showToast('Erro na conexão com iCloud.', 'error');
+    }
+};
+
+window.disconnectAppleCalendar = async () => {
+    if (!confirm('Deseja desconectar sua conta Apple?')) return;
+    try {
+        await fetch(`${API_URL}/apple-calendar/disconnect`, { method: 'POST' });
+        showToast('Apple Calendar desconectado.', 'success');
+        loadAppleCalendarStatus();
+    } catch (e) {
+        showToast('Erro ao desconectar.', 'error');
+    }
+};
+
 window.syncGoogleCalendar = async () => {
     const btn1 = document.getElementById('btn-gcal-sync-main');
-    const btn2 = document.getElementById('btnGoogleCalSync'); // The calendar tab button
+    const btn2 = document.getElementById('btnGoogleCalSync');
     if (btn1) { btn1.disabled = true; btn1.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...'; }
     if (btn2) { btn2.disabled = true; btn2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguarde...'; }
 
@@ -4146,7 +4223,7 @@ window.syncGoogleCalendar = async () => {
         const result = await syncRes.json();
         
         if (syncRes.ok) {
-            showToast(`${result.imported} evento(s) adicionado(s) com sucesso. (${result.skipped} ignorados)`, 'success');
+            showToast(`${result.added || 0} evento(s) sincronizados.`, 'success');
             loadGoogleCalendarStatus();
             if (typeof loadCalendarEvents === 'function') loadCalendarEvents();
         } else {

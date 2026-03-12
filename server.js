@@ -1304,13 +1304,45 @@ app.get('/api/google-calendar/callback', async (req, res) => {
 
 app.post('/api/google-calendar/disconnect', (req, res) => {
     try {
-        // Clear tokens
         googleCalendar.upsert({
             access_token: '',
             refresh_token: '',
             token_expiry: null,
             sync_enabled: 0
         });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// APPLE CALENDAR ROUTES
+app.get('/api/apple-calendar/status', (req, res) => {
+    try {
+        const settings = appleCalendar.get();
+        res.json({
+            connected: !!(settings && settings.apple_id && settings.app_password),
+            apple_id: settings ? settings.apple_id : null,
+            sync_enabled: settings ? settings.sync_enabled : 0
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/apple-calendar/save', (req, res) => {
+    try {
+        const { apple_id, app_password } = req.body;
+        if (!apple_id || !app_password) return res.status(400).json({ error: 'Apple ID e Senha de App são necessários.' });
+
+        appleCalendar.upsert({
+            apple_id,
+            app_password,
+            sync_enabled: 1
+        });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/apple-calendar/disconnect', (req, res) => {
+    try {
+        appleCalendar.delete();
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
