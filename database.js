@@ -319,6 +319,8 @@ try { db.prepare("ALTER TABLE teams ADD COLUMN sector_id INTEGER").run(); } catc
 try { db.prepare(`CREATE TABLE IF NOT EXISTS google_calendar_settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     calendar_id TEXT,
+    client_id TEXT,
+    client_secret TEXT,
     access_token TEXT,
     refresh_token TEXT,
     token_expiry DATETIME,
@@ -326,6 +328,10 @@ try { db.prepare(`CREATE TABLE IF NOT EXISTS google_calendar_settings (
     last_sync DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run(); } catch (e) { }
+
+// Migration check for existing tables
+try { db.prepare('ALTER TABLE google_calendar_settings ADD COLUMN client_id TEXT').run(); } catch(e) {}
+try { db.prepare('ALTER TABLE google_calendar_settings ADD COLUMN client_secret TEXT').run(); } catch(e) {}
 
 try { db.prepare(`CREATE TABLE IF NOT EXISTS message_templates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

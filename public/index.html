@@ -1825,7 +1825,32 @@
         </div>
     </div>
 
-    <!-- Birthday Modal -->
+    <!-- Google Calendar Config Modal -->
+    <div id="gcal-config-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('gcal-config-modal').style.display='none'">&times;</span>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:32px;">
+                <h2 style="margin:0;">Configurar Google API</h2>
+            </div>
+            <p style="font-size:.9rem; color:var(--text-secondary); margin-bottom:20px;">
+                Para habilitar o login com Google, insira as credenciais obtidas no Google Cloud Console.
+            </p>
+            <div class="form-group">
+                <label>Google Client ID</label>
+                <input type="text" id="gcal-client-id" placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com">
+            </div>
+            <div class="form-group" style="margin-top:15px;">
+                <label>Google Client Secret</label>
+                <input type="password" id="gcal-client-secret" placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx">
+            </div>
+            <div class="modal-footer" style="margin-top:30px; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn-outline" onclick="document.getElementById('gcal-config-modal').style.display='none'">Cancelar</button>
+                <button class="btn-primary" onclick="saveGoogleConfig()"><i class="fas fa-save"></i> Salvar Configuração</button>
+            </div>
+        </div>
+    </div>
+
     <div id="birthdayModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeBirthdayModal()">&times;</span>
@@ -1871,7 +1896,7 @@
 
 
 
-    <script src="app.js?v=1.0.1"></script>
+    <script src="app.js?v=1.0.2"></script>
 </body>
 
 </html>

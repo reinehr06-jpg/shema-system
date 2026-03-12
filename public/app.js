@@ -1,4 +1,4 @@
-console.warn('--- SHEMA APP LOADED v1.0.1 ---');
+console.warn('--- SHEMA APP LOADED v1.0.2 ---');
 const API_URL = window.location.origin.includes('localhost') ? 'http://localhost:3002/api' : '/api';
 let currentUser = null;
 
@@ -4122,10 +4122,41 @@ window.connectGoogleCalendar = async () => {
         if (data.url) {
             window.location.href = data.url;
         } else {
-            showToast('Erro ao gerar link do Google.', 'error');
+            // Se o erro for de configuração, abre o modal
+            if (data.error && data.error.includes('Configuração')) {
+                showToast('API do Google não configurada.', 'warning');
+                document.getElementById('gcal-config-modal').style.display = 'block';
+            } else {
+                showToast(data.error || 'Erro ao gerar link do Google.', 'error');
+            }
         }
     } catch (e) {
         showToast('Erro ao conectar com Google.', 'error');
+    }
+};
+
+window.saveGoogleConfig = async () => {
+    const clientId = document.getElementById('gcal-client-id').value;
+    const clientSecret = document.getElementById('gcal-client-secret').value;
+
+    if (!clientId || !clientSecret) return showToast('Preencha as chaves da API.', 'warning');
+
+    try {
+        const res = await fetch(`${API_URL}/google-calendar/save-config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('API Google configurada! Tente conectar agora.', 'success');
+            document.getElementById('gcal-config-modal').style.display = 'none';
+        } else {
+            showToast(data.error || 'Erro ao salvar config.', 'error');
+        }
+    } catch (e) {
+        showToast('Erro na configuração.', 'error');
     }
 };
 

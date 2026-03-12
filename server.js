@@ -1248,10 +1248,14 @@ app.get('/api/teams/:id', (req, res) => {
 // Google Calendar Integration Routes
 // ==========================================
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-// In development, redirect correctly
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${PORT}/api/google-calendar/callback`;
+function getGoogleConfig() {
+    const dbSettings = googleCalendar.get();
+    return {
+        clientId: dbSettings?.client_id || process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: dbSettings?.client_secret || process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri: process.env.GOOGLE_REDIRECT_URI || `http://localhost:${PORT}/api/google-calendar/callback`
+    };
+}
 
 app.get('/api/google-calendar/status', (req, res) => {
     try {
@@ -1265,20 +1269,22 @@ app.get('/api/google-calendar/status', (req, res) => {
 });
 
 app.get('/api/google-calendar/auth-url', (req, res) => {
+    const config = getGoogleConfig();
     console.log('--- Google OAuth Config Check ---');
-    console.log('GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? 'PRESENT' : 'MISSING');
-    console.log('GOOGLE_REDIRECT_URI:', GOOGLE_REDIRECT_URI);
+    console.log('GOOGLE_CLIENT_ID:', config.clientId ? 'PRESENT' : 'MISSING');
+    console.log('GOOGLE_REDIRECT_URI:', config.redirectUri);
     
-    if (!GOOGLE_CLIENT_ID) {
+    if (!config.clientId) {
         console.error('GOOGLE_CLIENT_ID is missing');
-        return res.status(500).json({ error: 'Configuração OAuth do Google ausente no servidor (.env).' });
+        return res.status(500).json({ error: 'Configuração OAuth do Google ausente. Configure no painel de Conexões.' });
     }
     const scopes = encodeURIComponent('https://www.googleapis.com/auth/calendar.readonly');
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scopes}&access_type=offline&prompt=consent`;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&response_type=code&scope=${scopes}&access_type=offline&prompt=consent`;
     res.json({ url });
 });
 
 app.get('/api/google-calendar/callback', async (req, res) => {
+    const config = getGoogleConfig();
     const code = req.query.code;
     if (!code) {
         return res.send('<script>alert("Autenticação cancelada."); window.location.href="/";</script>');
@@ -1286,10 +1292,10 @@ app.get('/api/google-calendar/callback', async (req, res) => {
 
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
+            client_id: config.clientId,
+            client_secret: config.clientSecret,
             code,
-            redirect_uri: GOOGLE_REDIRECT_URI,
+            redirect_uri: config.redirectUri,
             grant_type: 'authorization_code'
         });
 
@@ -1361,8 +1367,22 @@ app.post('/api/apple-calendar/disconnect', (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/google-calendar/save-config', (req, res) => {
+    try {
+        const { client_id, client_secret } = req.body;
+        if (!client_id || !client_secret) return res.status(400).json({ error: 'Client ID e Client Secret são necessários.' });
+
+        googleCalendar.upsert({
+            client_id,
+            client_secret
+        });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/google-calendar/sync', async (req, res) => {
     try {
+        const config = getGoogleConfig();
         const settings = googleCalendar.get();
         if (!settings || !settings.refresh_token) {
             return res.status(400).json({ error: 'Conta do Google não conectada.' });
@@ -1377,8 +1397,8 @@ app.post('/api/google-calendar/sync', async (req, res) => {
             if (expiry <= new Date()) {
                 try {
                     const refreshRes = await axios.post('https://oauth2.googleapis.com/token', {
-                        client_id: GOOGLE_CLIENT_ID,
-                        client_secret: GOOGLE_CLIENT_SECRET,
+                        client_id: config.clientId,
+                        client_secret: config.clientSecret,
                         refresh_token: settings.refresh_token,
                         grant_type: 'refresh_token'
                     });
