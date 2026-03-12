@@ -3829,7 +3829,7 @@ async function loadAccountPlano() {
 }
 
 // --- CONEXÕES (in profile) ---
-async function loadAccountConexoes() {
+window.loadAccountConexoes = async function() {
     try {
         const res = await fetch(`${API_URL}/teams`);
         const teamsList = await res.json();
@@ -3877,6 +3877,15 @@ async function loadAccountConexoes() {
             loadGoogleCalendarStatus();
         }
     } catch (e) { console.error('Account connections error:', e); }
+}
+
+window.handleRowConnect = function(teamId) {
+    // If we are in account context, we might want a different flow or just call existing
+    if (typeof handleWAConnect === 'function') {
+        handleWAConnect(teamId, 'leader');
+    } else {
+        showToast('Função de conexão não encontrada.', 'error');
+    }
 }
 
 window.filterAccountConnections = function (value) {
