@@ -21,10 +21,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           port: ${{ secrets.EC2_PORT || 22 }}
           script: |
-            # Mude '/var/www/shema' para o diretorio real do projeto no servidor EC2
-            # Mude 'server' para o nome ou ID do seu app no PM2
-            cd /var/www/shema || exit
+            cd /var/www/app || exit
             git pull origin main
-            npm install
-            pm2 restart server || pm2 restart all
+            docker-compose up -d --build
             echo "Deploy Concluido com Sucesso!"
