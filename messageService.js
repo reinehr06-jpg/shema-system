@@ -255,6 +255,7 @@ async function checkAndSendBirthdayOnSave(memberId) {
 }
 
 module.exports = {
+    sendWhatsAppMessage,
     sendAvisoEscalasFuturas,
     cronLembretes12h,
     cronAniversarios,

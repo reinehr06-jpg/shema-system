@@ -1,4 +1,4 @@
-console.warn('--- SHEMA APP LOADED v1.0.0 ---');
+console.warn('--- SHEMA APP LOADED v1.0.1 ---');
 const API_URL = window.location.origin.includes('localhost') ? 'http://localhost:3002/api' : '/api';
 let currentUser = null;
 

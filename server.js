@@ -8,7 +8,7 @@ const axios = require('axios');
 const fs = require('fs');
 const cron = require('node-cron');
 const { db, users, members, teams, serviceRecords, trainings, folders, stats, systemLogs, watchProgress, teamEvents, eventScales, scaleAssignments, sectors, availabilities, whatsappInstances, roles, eventAssignments, eventAvailability, organization, accountSettings, loginHistory, activeSessions, googleCalendar } = require('./database');
-const { sendAvisoEscalasFuturas, cronLembretes12h, cronAniversarios, checkAndSendBirthdayOnSave } = require('./messageService');
+const { sendWhatsAppMessage, sendAvisoEscalasFuturas, cronLembretes12h, cronAniversarios, checkAndSendBirthdayOnSave } = require('./messageService');
 
 // Load .env if exists
 try {
@@ -131,7 +131,7 @@ app.post('/api/auth/login', (req, res) => {
 
 
 // Password Recovery Routes
-app.post('/api/auth/forgot-password', (req, res) => {
+app.post('/api/auth/forgot-password', async (req, res) => {
     try {
         const { identifier } = req.body; // Can be email or phone
         if (!identifier) return res.status(400).json({ error: 'Informe e-mail ou telefone.' });
@@ -149,11 +149,20 @@ app.post('/api/auth/forgot-password', (req, res) => {
         const token = crypto.randomBytes(20).toString('hex');
         users.setResetToken(user.id, token);
 
-        // MOCK: In a real app, send email/SMS here.
-        console.log(`[PASS_RECOVERY] Token for ${user.email} (${user.phone}): ${token}`);
-        systemLogs.create('AUTH', 'RESET_TOKEN_GEN', user.name, { email: user.email, token });
+        // Real recovery via WhatsApp
+        const text = `Seu código de recuperação SHEMA: ${token}\n\nUse este código no site para redefinir sua senha.`;
+        const sent = await sendWhatsAppMessage(user.phone || '', text);
 
-        res.json({ success: true, message: 'Se o usuário existir, um código foi enviado.' });
+        if (sent) {
+            console.log(`[PASS_RECOVERY] Token sent via WhatsApp to ${user.phone}`);
+            systemLogs.create('AUTH', 'RESET_TOKEN_SENT', user.name, { email: user.email, phone: user.phone });
+        } else {
+            console.error(`[PASS_RECOVERY] Failed to send WhatsApp to ${user.phone}`);
+            // Fallback to console for debugging
+            console.log(`[PASS_RECOVERY] TOKEN: ${token}`);
+        }
+
+        res.json({ success: true, message: 'Se o usuário possuir um telefone cadastrado e instância ativa, o código foi enviado.' });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
