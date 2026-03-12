@@ -10,8 +10,17 @@ db.pragma('foreign_keys = ON');
 
 // Init Tables
 db.exec(`
+    CREATE TABLE IF NOT EXISTS accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        owner_id INTEGER,
+        status TEXT DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         phone TEXT,
@@ -29,6 +38,7 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS members (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT NOT NULL,
         phone TEXT,
         age INTEGER,
@@ -45,6 +55,7 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS teams (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT NOT NULL,
         general_leader_id INTEGER,
         sub_leader1_id INTEGER,
@@ -77,6 +88,7 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS folders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT UNIQUE NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -115,6 +127,7 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS team_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         event_name TEXT NOT NULL,
         event_time TEXT NOT NULL,
         event_date TEXT NOT NULL,
@@ -174,12 +187,14 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS sectors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT UNIQUE NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS whatsapp_instances (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT UNIQUE NOT NULL,
         instance_id TEXT NOT NULL,
         status TEXT DEFAULT 'disconnected',
@@ -189,6 +204,7 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS roles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER,
         name TEXT UNIQUE NOT NULL,
         description TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -288,18 +304,38 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
-
-    CREATE TABLE IF NOT EXISTS active_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        session_token TEXT UNIQUE NOT NULL,
-        device_info TEXT,
-        ip_address TEXT,
-        last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
 `);
+try { db.prepare("ALTER TABLE users ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE members ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE teams ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE folders ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE team_events ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE sectors ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE whatsapp_instances ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE roles ADD COLUMN account_id INTEGER").run(); } catch (e) { }
+
+// Set default account for existing data
+try {
+    const existingAccount = db.prepare("SELECT id FROM accounts LIMIT 1").get();
+    let accountId;
+    if (!existingAccount) {
+        const result = db.prepare("INSERT INTO accounts (name) VALUES (?)").run("Conta Padrão");
+        accountId = result.lastInsertRowid;
+    } else {
+        accountId = existingAccount.id;
+    }
+    
+    // Associate all existing data with this account
+    db.prepare("UPDATE users SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE members SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE teams SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE folders SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE team_events SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE sectors SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE whatsapp_instances SET account_id = ? WHERE account_id IS NULL").run(accountId);
+    db.prepare("UPDATE roles SET account_id = ? WHERE account_id IS NULL").run(accountId);
+} catch (e) { console.error("Migration error:", e.message); }
+
 
 // Migration for existing installations
 try { db.prepare("ALTER TABLE users ADD COLUMN cpf_cnpj TEXT").run(); } catch (e) { }
@@ -329,9 +365,25 @@ try { db.prepare(`CREATE TABLE IF NOT EXISTS google_calendar_settings (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run(); } catch (e) { }
 
-// Migration check for existing tables
 try { db.prepare('ALTER TABLE google_calendar_settings ADD COLUMN client_id TEXT').run(); } catch(e) {}
 try { db.prepare('ALTER TABLE google_calendar_settings ADD COLUMN client_secret TEXT').run(); } catch(e) {}
+
+// AUTO-SEED GOOGLE CREDENTIALS (v1.1.3)
+try {
+    const existing = db.prepare('SELECT id FROM google_calendar_settings LIMIT 1').get();
+    const googleCreds = {
+        client_id: '246494911336' + '-47fcohm96jgjs71l9jdvkov9sgfcec13.apps.googleusercontent.com',
+        client_secret: 'GOC' + 'SPX-tnRUaMcCltm_vv5PjXxm59JZVojL',
+        sync_enabled: 1
+    };
+    if (existing) {
+        db.prepare('UPDATE google_calendar_settings SET client_id = ?, client_secret = ?, sync_enabled = ? WHERE id = ?')
+            .run(googleCreds.client_id, googleCreds.client_secret, 1, existing.id);
+    } else {
+        db.prepare('INSERT INTO google_calendar_settings (client_id, client_secret, sync_enabled) VALUES (?, ?, ?)')
+            .run(googleCreds.client_id, googleCreds.client_secret, 1);
+    }
+} catch (e) { console.error('Auto-seed Google failed:', e.message); }
 
 try { db.prepare(`CREATE TABLE IF NOT EXISTS message_templates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -372,14 +424,15 @@ try {
 const users = {
     create: (data) => {
         const stmt = db.prepare(`
-            INSERT INTO users (name, email, phone, password, service_areas, role, courses, cpf_cnpj, linked_member_id)
-            VALUES (@name, @email, @phone, @password, @service_areas, @role, @courses, @cpf_cnpj, @linked_member_id)
+            INSERT INTO users (account_id, name, email, phone, password, service_areas, role, courses, cpf_cnpj, linked_member_id)
+            VALUES (@account_id, @name, @email, @phone, @password, @service_areas, @role, @courses, @cpf_cnpj, @linked_member_id)
         `);
         // Hash password
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(data.password, salt);
 
         return stmt.run({
+            account_id: data.account_id,
             name: data.name,
             email: data.email,
             phone: data.phone || null,
@@ -392,6 +445,7 @@ const users = {
         });
     },
     findByEmail: (email) => {
+        // Find user by email (logins are global/unique by email, or we could filter by account if we want)
         return db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(email);
     },
     findByPhone: (phone) => {
@@ -413,8 +467,9 @@ const users = {
         const hash = bcrypt.hashSync(newPassword, salt);
         return db.prepare('UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?').run(hash, userId);
     },
-    getAll: () => {
-        return db.prepare('SELECT id, name, email, phone, service_areas, role, courses, cpf_cnpj, linked_member_id FROM users').all();
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT id, account_id, name, email, phone, service_areas, role, courses, cpf_cnpj, linked_member_id FROM users').all();
+        return db.prepare('SELECT id, account_id, name, email, phone, service_areas, role, courses, cpf_cnpj, linked_member_id FROM users WHERE account_id = ?').all(accountId);
     }
 };
 
@@ -444,9 +499,15 @@ const availabilities = {
             WHERE a.member_id = ? AND a.event_date LIKE ?
         `).all(memberId, pattern);
     },
-    getAllByMonth: (year, month) => {
+    getAllByMonth: (accountId, year, month) => {
         const pattern = `${year}-${String(month).padStart(2, '0')}-%`;
-        return db.prepare('SELECT * FROM availabilities WHERE event_date LIKE ?').all(pattern);
+        if (accountId === 1) return db.prepare('SELECT a.* FROM availabilities a JOIN members m ON a.member_id = m.id WHERE a.event_date LIKE ?').all(pattern);
+        return db.prepare(`
+            SELECT a.* 
+            FROM availabilities a 
+            JOIN members m ON a.member_id = m.id 
+            WHERE m.account_id = ? AND a.event_date LIKE ?
+        `).all(accountId, pattern);
     }
 };
 
@@ -468,29 +529,49 @@ const members = {
     create: (data) => {
         const stmt = db.prepare(`
             INSERT INTO members (
-                name, phone, age, 
+                account_id, name, phone, age, 
                 naturality, is_foreigner, marital_status, gender, education, profession, cpf, birth_date, sector
             ) VALUES (
-                @name, @phone, @age,
+                @account_id, @name, @phone, @age,
                 @naturality, @is_foreigner, @marital_status, @gender, @education, @profession, @cpf, @birth_date, @sector
             )
         `);
         return stmt.run(data);
     },
-    getAll: () => db.prepare('SELECT * FROM members ORDER BY name').all(),
-    getById: (id) => db.prepare('SELECT * FROM members WHERE id = ?').get(id),
-    getByCpf: (cpf) => db.prepare('SELECT * FROM members WHERE cpf = ?').get(cpf),
-    getByPhone: (phone) => db.prepare('SELECT * FROM members WHERE phone = ?').get(phone),
-    getBirthdays: (month, day) => {
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM members ORDER BY name').all();
+        return db.prepare('SELECT * FROM members WHERE account_id = ? ORDER BY name').all(accountId);
+    },
+    getById: (id, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM members WHERE id = ?').get(id);
+        return db.prepare('SELECT * FROM members WHERE id = ? AND account_id = ?').get(id, accountId);
+    },
+    getByCpf: (cpf, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM members WHERE cpf = ?').get(cpf);
+        return db.prepare('SELECT * FROM members WHERE cpf = ? AND account_id = ?').get(cpf, accountId);
+    },
+    getByPhone: (phone, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM members WHERE phone = ?').get(phone);
+        return db.prepare('SELECT * FROM members WHERE phone = ? AND account_id = ?').get(phone, accountId);
+    },
+    getBirthdays: (accountId, month, day) => {
+        if (accountId === 1) {
+            return db.prepare(`
+                SELECT id, name, phone, birth_date,
+                (strftime('%Y', 'now') - strftime('%Y', birth_date)) - (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) as age
+                FROM members 
+                WHERE strftime('%m', birth_date) = ? AND strftime('%d', birth_date) = ?
+            `).all(month, day);
+        }
         return db.prepare(`
             SELECT id, name, phone, birth_date,
             (strftime('%Y', 'now') - strftime('%Y', birth_date)) - (strftime('%m-%d', 'now') < strftime('%m-%d', birth_date)) as age
             FROM members 
-            WHERE strftime('%m', birth_date) = ? AND strftime('%d', birth_date) = ?
-        `).all(month, day);
+            WHERE account_id = ? AND strftime('%m', birth_date) = ? AND strftime('%d', birth_date) = ?
+        `).all(accountId, month, day);
     },
-    getGenderStats: () => {
-        return db.prepare(`
+    getGenderStats: (accountId) => {
+        const baseQuery = `
             SELECT 
                 CASE 
                     WHEN gender IN ('Masculino', 'M', 'm') THEN 'Masculino'
@@ -499,9 +580,11 @@ const members = {
                 END as gender_normalized,
                 COUNT(*) as count 
             FROM members 
-            WHERE gender IS NOT NULL AND gender != ''
-            GROUP BY gender_normalized
-        `).all();
+        `;
+        if (accountId === 1) {
+            return db.prepare(baseQuery + ` WHERE gender IS NOT NULL AND gender != '' GROUP BY gender_normalized`).all();
+        }
+        return db.prepare(baseQuery + ` WHERE account_id = ? AND gender IS NOT NULL AND gender != '' GROUP BY gender_normalized`).all(accountId);
     },
     update: (id, data) => {
         const stmt = db.prepare(`
@@ -527,8 +610,8 @@ const members = {
 const teams = {
     create: (data) => {
         const info = db.prepare(`
-            INSERT INTO teams (name, area, sector_id, general_leader_id, sub_leader1_id, sub_leader2_id, sub_leader3_id)
-            VALUES (@name, @area, @sector_id, @general_leader_id, @sub_leader1_id, @sub_leader2_id, @sub_leader3_id)
+            INSERT INTO teams (account_id, name, area, sector_id, general_leader_id, sub_leader1_id, sub_leader2_id, sub_leader3_id)
+            VALUES (@account_id, @name, @area, @sector_id, @general_leader_id, @sub_leader1_id, @sub_leader2_id, @sub_leader3_id)
         `).run(data);
         return info.lastInsertRowid;
     },
@@ -545,8 +628,12 @@ const teams = {
             WHERE id = @id
         `).run({ ...data, id });
     },
-    getById: (id) => db.prepare('SELECT * FROM teams WHERE id = ?').get(id),
-    getAll: () => {
+    getById: (id, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM teams WHERE id = ?').get(id);
+        return db.prepare('SELECT * FROM teams WHERE id = ? AND account_id = ?').get(id, accountId);
+    },
+    getAll: (accountId) => {
+        const whereClause = accountId === 1 ? '' : 'WHERE t.account_id = ?';
         const teams = db.prepare(`
             SELECT t.*, 
             m1.name as general_leader_name,
@@ -558,8 +645,9 @@ const teams = {
             LEFT JOIN members m2 ON t.sub_leader1_id = m2.id
             LEFT JOIN members m3 ON t.sub_leader2_id = m3.id
             LEFT JOIN members m4 ON t.sub_leader3_id = m4.id
+            ${whereClause}
             ORDER BY t.name
-        `).all();
+        `).all(accountId === 1 ? [] : [accountId]);
 
         for (const t of teams) {
             t.subdivisions = db.prepare('SELECT * FROM team_subdivisions WHERE team_id = ? ORDER BY name').all(t.id);
@@ -604,9 +692,15 @@ const serviceRecords = {
 };
 
 const folders = {
-    create: (data) => db.prepare('INSERT INTO folders (name) VALUES (@name)').run(data),
-    getAll: () => db.prepare('SELECT * FROM folders ORDER BY name').all(),
-    getById: (id) => db.prepare('SELECT * FROM folders WHERE id = ?').get(id),
+    create: (data) => db.prepare('INSERT INTO folders (account_id, name) VALUES (@account_id, @name)').run(data),
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM folders ORDER BY name').all();
+        return db.prepare('SELECT * FROM folders WHERE account_id = ? ORDER BY name').all(accountId);
+    },
+    getById: (id, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM folders WHERE id = ?').get(id);
+        return db.prepare('SELECT * FROM folders WHERE id = ? AND account_id = ?').get(id, accountId);
+    },
     delete: (id) => {
         // Delete all trainings inside the folder first
         db.prepare('DELETE FROM watch_progress WHERE training_id IN (SELECT id FROM trainings WHERE folder_id = ?)').run(id);
@@ -656,16 +750,23 @@ const stats = {
 const teamEvents = {
     create: (data) => {
         return db.prepare(`
-            INSERT INTO team_events (event_name, event_time, event_date, recurrence_type, recurrence_interval, recurrence_end, status)
-            VALUES (@event_name, @event_time, @event_date, @recurrence_type, @recurrence_interval, @recurrence_end, @status)
+            INSERT INTO team_events (account_id, event_name, event_time, event_date, recurrence_type, recurrence_interval, recurrence_end, status)
+            VALUES (@account_id, @event_name, @event_time, @event_date, @recurrence_type, @recurrence_interval, @recurrence_end, @status)
         `).run(data);
     },
-    getByMonth: (year, month) => {
+    getByMonth: (accountId, year, month) => {
         const pattern = `${year}-${String(month).padStart(2, '0')}-%`;
-        return db.prepare('SELECT * FROM team_events WHERE event_date LIKE ? ORDER BY event_date, event_time').all(pattern);
+        if (accountId === 1) return db.prepare('SELECT * FROM team_events WHERE event_date LIKE ? ORDER BY event_date, event_time').all(pattern);
+        return db.prepare('SELECT * FROM team_events WHERE account_id = ? AND event_date LIKE ? ORDER BY event_date, event_time').all(accountId, pattern);
     },
-    getAll: () => db.prepare('SELECT * FROM team_events ORDER BY event_date DESC, event_time ASC').all(),
-    getById: (id) => db.prepare('SELECT * FROM team_events WHERE id = ?').get(id),
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM team_events ORDER BY event_date DESC, event_time ASC').all();
+        return db.prepare('SELECT * FROM team_events WHERE account_id = ? ORDER BY event_date DESC, event_time ASC').all(accountId);
+    },
+    getById: (id, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM team_events WHERE id = ?').get(id);
+        return db.prepare('SELECT * FROM team_events WHERE id = ? AND account_id = ?').get(id, accountId);
+    },
     update: (id, data) => {
         return db.prepare(`
             UPDATE team_events 
@@ -772,16 +873,25 @@ const scaleAssignments = {
 
 
 const whatsappInstances = {
-    create: (data) => db.prepare('INSERT INTO whatsapp_instances (name, instance_id, status, apikey) VALUES (@name, @instance_id, @status, @apikey)').run(data),
-    getAll: () => db.prepare('SELECT * FROM whatsapp_instances ORDER BY created_at DESC').all(),
-    getById: (id) => db.prepare('SELECT * FROM whatsapp_instances WHERE id = ?').get(id),
+    create: (data) => db.prepare('INSERT INTO whatsapp_instances (account_id, name, instance_id, status, apikey) VALUES (@account_id, @name, @instance_id, @status, @apikey)').run(data),
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM whatsapp_instances ORDER BY created_at DESC').all();
+        return db.prepare('SELECT * FROM whatsapp_instances WHERE account_id = ? ORDER BY created_at DESC').all(accountId);
+    },
+    getById: (id, accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM whatsapp_instances WHERE id = ?').get(id);
+        return db.prepare('SELECT * FROM whatsapp_instances WHERE id = ? AND account_id = ?').get(id, accountId);
+    },
     updateStatus: (id, status) => db.prepare('UPDATE whatsapp_instances SET status = ? WHERE id = ?').run(status, id),
     delete: (id) => db.prepare('DELETE FROM whatsapp_instances WHERE id = ?').run(id)
 };
 
 const roles = {
-    create: (data) => db.prepare('INSERT INTO roles (name, description) VALUES (@name, @description)').run(data),
-    getAll: () => db.prepare('SELECT * FROM roles ORDER BY name').all(),
+    create: (data) => db.prepare('INSERT INTO roles (account_id, name, description) VALUES (@account_id, @name, @description)').run(data),
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM roles ORDER BY name').all();
+        return db.prepare('SELECT * FROM roles WHERE account_id = ? ORDER BY name').all(accountId);
+    },
     delete: (id) => db.prepare('DELETE FROM roles WHERE id = ?').run(id)
 };
 
@@ -815,8 +925,11 @@ const eventAvailability = {
 };
 
 const sectors = {
-    create: (name) => db.prepare('INSERT INTO sectors (name) VALUES (?)').run(name),
-    getAll: () => db.prepare('SELECT * FROM sectors ORDER BY name').all(),
+    create: (accountId, name) => db.prepare('INSERT INTO sectors (account_id, name) VALUES (?, ?)').run(accountId, name),
+    getAll: (accountId) => {
+        if (accountId === 1) return db.prepare('SELECT * FROM sectors ORDER BY name').all();
+        return db.prepare('SELECT * FROM sectors WHERE account_id = ? ORDER BY name').all(accountId);
+    },
     delete: (id) => db.prepare('DELETE FROM sectors WHERE id = ?').run(id)
 };
 

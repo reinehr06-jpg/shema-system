@@ -28,19 +28,19 @@ function pickTemplate(memberId, category) {
     return pool[randomIndex];
 }
 
-async function sendWhatsAppMessage(phone, text) {
+async function sendWhatsAppMessage(phone, text, accountId) {
     // Basic phone sanitization
     let cleanPhone = phone.replace(/\D/g, '');
     if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
         cleanPhone = '55' + cleanPhone;
     }
     
-    // Find active whatsapp instance
-    const instances = whatsappInstances.getAll();
+    // Find active whatsapp instance for this account
+    const instances = whatsappInstances.getAll(accountId);
     const activeInstance = instances.find(i => i.status === 'open');
     
     if (!activeInstance) {
-        console.warn('Nenhuma instância do WhatsApp conectada. Mensagem não enviada.');
+        console.warn(`[Account ${accountId}] Nenhuma instância do WhatsApp conectada. Mensagem não enviada.`);
         return false;
     }
 
@@ -56,7 +56,7 @@ async function sendWhatsAppMessage(phone, text) {
         });
         return true;
     } catch (e) {
-        console.error(`Erro ao enviar WhatsApp para ${cleanPhone}:`, e.message);
+        console.error(`[Account ${accountId}] Erro ao enviar WhatsApp para ${cleanPhone}:`, e.message);
         return false;
     }
 }
@@ -93,7 +93,7 @@ async function sendAvisoEscalasFuturas(memberId) {
         .replace(/{nome}/g, member.name.split(' ')[0])
         .replace(/{lista_escalas}/g, listaText);
 
-    const sent = await sendWhatsAppMessage(member.phone, content);
+    const sent = await sendWhatsAppMessage(member.phone, content, member.account_id);
     if (sent) {
         messageHistory.create({
             member_id: memberId,
@@ -120,7 +120,8 @@ async function cronLembretes12h() {
             t.name as team_name,
             ts.name as funcao,
             m.name as member_name,
-            m.phone
+            m.phone,
+            m.account_id
         FROM scale_assignments sa
         JOIN team_events te ON sa.event_id = te.id
         JOIN teams t ON sa.team_id = t.id
@@ -157,7 +158,7 @@ async function cronLembretes12h() {
                 .replace(/{nome_equipe}/g, scale.team_name)
                 .replace(/{funcao}/g, scale.funcao);
 
-            const sent = await sendWhatsAppMessage(scale.phone, content);
+            const sent = await sendWhatsAppMessage(scale.phone, content, scale.account_id);
             if (sent) {
                 messageHistory.create({
                     member_id: scale.member_id,
@@ -178,7 +179,7 @@ async function cronAniversarios() {
     const todayStr = `-${currentMonth}-${currentDay}`;
 
     const bdayQuery = db.prepare(`
-        SELECT id, name, phone, birth_date
+        SELECT id, name, phone, birth_date, account_id
         FROM members
         WHERE birth_date LIKE ? AND phone IS NOT NULL AND phone != ''
     `);
@@ -196,7 +197,7 @@ async function cronAniversarios() {
 
         let content = template.content.replace(/{nome}/g, member.name.split(' ')[0]);
 
-        const sent = await sendWhatsAppMessage(member.phone, content);
+        const sent = await sendWhatsAppMessage(member.phone, content, member.account_id);
         if (sent) {
             messageHistory.create({
                 member_id: member.id,
@@ -243,7 +244,7 @@ async function checkAndSendBirthdayOnSave(memberId) {
 
     let content = template.content.replace(/{nome}/g, member.name.split(' ')[0]);
 
-    const sent = await sendWhatsAppMessage(member.phone, content);
+    const sent = await sendWhatsAppMessage(member.phone, content, member.account_id);
     if (sent) {
         messageHistory.create({
             member_id: memberId,

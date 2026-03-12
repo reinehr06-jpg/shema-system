@@ -97,15 +97,20 @@ app.post('/api/auth/register', (req, res) => {
             if (existingPhone) return res.status(400).json({ error: 'Este telefone já está cadastrado em outra conta.' });
         }
 
+        // Create a new account for this user
+        const accountResult = db.prepare('INSERT INTO accounts (name) VALUES (?)').run(`${name} Account`);
+        const accountId = accountResult.lastInsertRowid;
+
         const result = users.create({
+            account_id: accountId,
             name,
             email: email.toLowerCase(),
             phone,
             cpf_cnpj,
             password,
-            role: 'admin' // Initial registrations are admins
+            role: 'admin' // Initial registrations are admins of their own account
         });
-        res.json({ success: true, id: result.lastInsertRowid });
+        res.json({ success: true, id: result.lastInsertRowid, accountId });
     } catch (e) {
         if (e.code === 'SQLITE_CONSTRAINT_UNIQUE') {
             return res.status(400).json({ error: 'E-mail já cadastrado em outra conta.' });
@@ -403,12 +408,16 @@ app.delete('/api/members/:id', (req, res) => {
 
 // Team Routes
 app.get('/api/teams', (req, res) => {
-    try { res.json(teams.getAll()); } catch (e) { res.status(500).json({ error: e.message }); }
+    try {
+        const accountId = parseInt(req.query.accountId);
+        const allTeams = teams.getAll(accountId);
+        res.json(allTeams);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/teams', (req, res) => {
     try {
-        const { name, area, sector_id, general_leader_id, sub_leader1_id, sub_leader2_id, sub_leader3_id, subdivisions } = req.body;
+        const { name, area, sector_id, general_leader_id, sub_leader1_id, sub_leader2_id, sub_leader3_id, subdivisions, accountId } = req.body;
 
         const cleanId = (id) => (id && id !== "") ? id : null;
 
@@ -420,7 +429,8 @@ app.post('/api/teams', (req, res) => {
             general_leader_id: cleanId(general_leader_id) ? parseInt(general_leader_id) : null,
             sub_leader1_id: cleanId(sub_leader1_id) ? parseInt(sub_leader1_id) : null,
             sub_leader2_id: cleanId(sub_leader2_id) ? parseInt(sub_leader2_id) : null,
-            sub_leader3_id: cleanId(sub_leader3_id) ? parseInt(sub_leader3_id) : null
+            sub_leader3_id: cleanId(sub_leader3_id) ? parseInt(sub_leader3_id) : null,
+            account_id: accountId // Add accountId here
         });
 
         // 2. Add Subdivisions
@@ -436,7 +446,7 @@ app.post('/api/teams', (req, res) => {
         }
 
         res.json({ success: true, teamId });
-        systemLogs.create('CREATE', 'TEAM', name || area, { id: teamId, subdivisionsCount: subdivisions ? subdivisions.length : 0 });
+        systemLogs.create('CREATE', 'TEAM', name || area, { id: teamId, subdivisionsCount: subdivisions ? subdivisions.length : 0, accountId });
 
     } catch (e) {
         console.error('Team Create Error:', e);
@@ -505,15 +515,18 @@ app.delete('/api/teams/:id', (req, res) => {
 
 // Sector Routes
 app.get('/api/sectors', (req, res) => {
-    try { res.json(sectors.getAll()); } catch (e) { res.status(500).json({ error: e.message }); }
+    try {
+        const accountId = parseInt(req.query.accountId);
+        res.json(sectors.getAll(accountId));
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/sectors', (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, accountId } = req.body;
         if (!name) return res.status(400).json({ error: 'Nome do setor é obrigatório' });
-        sectors.create(name);
-        res.json({ success: true });
+        const result = sectors.create(accountId, name);
+        res.json({ success: true, id: result.lastInsertRowid });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1248,12 +1261,27 @@ app.get('/api/teams/:id', (req, res) => {
 // Google Calendar Integration Routes
 // ==========================================
 
-function getGoogleConfig() {
+function getGoogleConfig(req) {
     const dbSettings = googleCalendar.get();
-    return {
+    const config = {
         clientId: dbSettings?.client_id || process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: dbSettings?.client_secret || process.env.GOOGLE_CLIENT_SECRET || '',
-        redirectUri: process.env.GOOGLE_REDIRECT_URI || `http://localhost:${PORT}/api/google-calendar/callback`
+    };
+
+    // Calculate dynamic redirect URI based on current request host
+    let host = req ? req.get('host') : 'localhost:3000';
+    let protocol = req ? req.protocol : 'http';
+    
+    // Nginx proxy check: Use X-Forwarded-Proto if available
+    if (req && req.headers['x-forwarded-proto']) {
+        protocol = req.headers['x-forwarded-proto'];
+    }
+
+    const redirectUri = `${protocol}://${host}/api/google-calendar/callback`;
+    
+    return {
+        ...config,
+        redirectUri: process.env.GOOGLE_REDIRECT_URI || redirectUri
     };
 }
 
@@ -1269,7 +1297,7 @@ app.get('/api/google-calendar/status', (req, res) => {
 });
 
 app.get('/api/google-calendar/auth-url', (req, res) => {
-    const config = getGoogleConfig();
+    const config = getGoogleConfig(req);
     console.log('--- Google OAuth Config Check ---');
     console.log('GOOGLE_CLIENT_ID:', config.clientId ? 'PRESENT' : 'MISSING');
     console.log('GOOGLE_REDIRECT_URI:', config.redirectUri);
@@ -1284,7 +1312,7 @@ app.get('/api/google-calendar/auth-url', (req, res) => {
 });
 
 app.get('/api/google-calendar/callback', async (req, res) => {
-    const config = getGoogleConfig();
+    const config = getGoogleConfig(req);
     const code = req.query.code;
     if (!code) {
         return res.send('<script>alert("Autenticação cancelada."); window.location.href="/";</script>');
@@ -1382,7 +1410,7 @@ app.post('/api/google-calendar/save-config', (req, res) => {
 
 app.post('/api/google-calendar/sync', async (req, res) => {
     try {
-        const config = getGoogleConfig();
+        const config = getGoogleConfig(req);
         const settings = googleCalendar.get();
         if (!settings || !settings.refresh_token) {
             return res.status(400).json({ error: 'Conta do Google não conectada.' });

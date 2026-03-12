@@ -295,6 +295,7 @@ async function handleLogin(e) {
 
         if (data.success) {
             currentUser = data.user;
+            // Ensure account_id is stored with the user data
             localStorage.setItem('shema_user', JSON.stringify(currentUser));
             initApp();
 
@@ -363,7 +364,7 @@ document.getElementById('folderFormDisplay').addEventListener('submit', async (e
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, account_id: currentUser.account_id })
         });
         if (!res.ok) {
             const errData = await res.json().catch(() => ({ error: 'Erro ao criar pasta' }));
@@ -490,8 +491,8 @@ async function loadMemberPortal() {
 
     try {
         const [availRes, assignRes] = await Promise.all([
-            fetch(`${API_URL}/member-portal/availability`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-            fetch(`${API_URL}/member-portal/assignments`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+            fetch(`${API_URL}/member-portal/availability?accountId=${currentUser.account_id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
+            fetch(`${API_URL}/member-portal/assignments?accountId=${currentUser.account_id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
         ]);
 
         const availData = await availRes.json();
@@ -536,7 +537,7 @@ async function submitAvailability(eventId, response) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ event_id: eventId, response: response })
+            body: JSON.stringify({ event_id: eventId, response: response, account_id: currentUser.account_id })
         });
         if (res.ok) {
             loadMemberPortal();
@@ -584,7 +585,7 @@ async function updateAssignment(id, action) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: action === 'decline' ? JSON.stringify({ reason }) : null
+            body: JSON.stringify({ reason, account_id: currentUser.account_id })
         });
         if (res.ok) {
             loadMemberPortal();
@@ -654,7 +655,7 @@ window.showBirthdayModal = async () => {
     modal.style.display = 'block';
 
     try {
-        const res = await fetch(`${API_URL}/birthdays/today`);
+        const res = await fetch(`${API_URL}/birthdays/today?accountId=${currentUser.account_id}`);
         const birthdays = await res.json();
 
         if (birthdays.length === 0) {
@@ -840,7 +841,7 @@ function getAttendanceColor(memberId, date) {
 let allAvailabilities = [];
 async function loadCalendarAvailabilities(year, month) {
     try {
-        const res = await fetch(`${API_URL}/availabilities?year=${year}&month=${month}`);
+        const res = await fetch(`${API_URL}/availabilities?year=${year}&month=${month}&accountId=${currentUser.account_id}`);
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
         allAvailabilities = Array.isArray(data) ? data : [];
@@ -862,10 +863,10 @@ async function loadDashboard() {
     try {
         // Fetch all data in parallel with error handling
         const [statsRes, membersRes, teamsRes, trainingsRes] = await Promise.all([
-            fetch(`${API_URL}/stats`).catch(e => { console.error('Stats fetch error:', e); return { ok: false }; }),
-            fetch(`${API_URL}/members`).catch(e => { console.error('Members fetch error:', e); return { ok: false }; }),
-            fetch(`${API_URL}/teams`).catch(e => { console.error('Teams fetch error:', e); return { ok: false }; }),
-            fetch(`${API_URL}/trainings`).catch(e => { console.error('Trainings fetch error:', e); return { ok: false }; })
+            fetch(`${API_URL}/stats?accountId=${currentUser.account_id}`).catch(e => { console.error('Stats fetch error:', e); return { ok: false }; }),
+            fetch(`${API_URL}/members?accountId=${currentUser.account_id}`).catch(e => { console.error('Members fetch error:', e); return { ok: false }; }),
+            fetch(`${API_URL}/teams?accountId=${currentUser.account_id}`).catch(e => { console.error('Teams fetch error:', e); return { ok: false }; }),
+            fetch(`${API_URL}/trainings?accountId=${currentUser.account_id}`).catch(e => { console.error('Trainings fetch error:', e); return { ok: false }; })
         ]);
 
         const statsData = statsRes.ok ? await statsRes.json() : {};
@@ -918,7 +919,7 @@ function generateQRCode() {
 // Members (Cadastros)
 async function loadMembers() {
     try {
-        const res = await fetch(`${API_URL}/members`);
+        const res = await fetch(`${API_URL}/members?accountId=${currentUser.account_id}`);
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
         allMembers = Array.isArray(data) ? data : [];
@@ -962,7 +963,7 @@ async function deleteMember(id) {
     const confirmed = await showConfirmModal('Excluir Membro', 'Tem certeza que deseja excluir este membro? Esta ação não pode ser desfeita.');
     if (!confirmed) return;
     try {
-        const res = await fetch(`${API_URL}/members/${id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_URL}/members/${id}?accountId=${currentUser.account_id}`, { method: 'DELETE' });
         const result = await res.json();
         if (result.success) {
             loadCadastros();
@@ -976,7 +977,7 @@ async function deleteMember(id) {
 // Teams (Equipes)
 async function loadTeams() {
     try {
-        const res = await fetch(`${API_URL}/teams`);
+        const res = await fetch(`${API_URL}/teams?accountId=${currentUser.account_id}`);
         const teams = await res.json();
 
         const list = document.getElementById('teamList');
@@ -1341,7 +1342,7 @@ document.getElementById('sectorFormDisplay').addEventListener('submit', async (e
         const res = await fetch(`${API_URL}/sectors`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, accountId: currentUser.account_id })
         });
         if (!res.ok) throw new Error('Erro ao salvar setor');
         showToast('Setor salvo com sucesso!', 'success');
@@ -1459,7 +1460,7 @@ window.addLeaderRow = (memberId = '', role = 'assistant', priority = 0) => {
 // ... existing code ...
 async function loadSectors() {
     try {
-        const res = await fetch(`${API_URL}/sectors`);
+        const res = await fetch(`${API_URL}/sectors?accountId=${currentUser.account_id}`);
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
         allSectors = Array.isArray(data) ? data : [];
@@ -1719,6 +1720,35 @@ window.hideTrainingForms = () => {
     document.getElementById('trainingActions').style.display = 'flex';
     document.getElementById('btnBackToTrainings').style.display = 'none';
 };
+
+// WhatsApp Instances
+async function loadWhatsAppInstances() {
+    try {
+        const res = await fetch(`${API_URL}/whatsapp/instances?accountId=${currentUser.account_id}`);
+        const instances = await res.json();
+        renderWhatsAppGrid(instances);
+    } catch (e) {
+        console.error('Error loading WhatsApp instances:', e);
+    }
+}
+
+async function createWhatsAppInstance(e) {
+    if (e) e.preventDefault();
+    const name = document.getElementById('instanceName').value;
+    try {
+        const res = await fetch(`${API_URL}/whatsapp/instances`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, accountId: currentUser.account_id })
+        });
+        if (res.ok) {
+            hideModal('whatsappInstanceModal');
+            loadWhatsAppInstances();
+        }
+    } catch (e) {
+        console.error('Error creating WhatsApp instance:', e);
+    }
+}
 
 // Member View Handlers (hideMemberForm is defined above as alias for closeMemberRegistration)
 
@@ -2022,7 +2052,8 @@ document.getElementById('teamFormDisplay').addEventListener('submit', async (e) 
         sub_leader1_id: document.getElementById('tmSub1Disp').value || null,
         sub_leader2_id: document.getElementById('tmSub2Disp').value || null,
         sub_leader3_id: document.getElementById('tmSub3Disp').value || null,
-        subdivisions: []
+        subdivisions: [],
+        account_id: currentUser.account_id // Added account_id
     };
 
     // Collect subdivisions
@@ -2745,7 +2776,7 @@ window.renderScaleContent = async function (eventId) {
                         </div>
                         <div class="accordion-content">
                             <div class="sub-scales-list">
-                                ${s.subdivisions.map(sub => `
+                                ${(s.subdivisions || []).map(sub => `
                                     <div class="sub-scale-item">
                                         <div class="sub-scale-header">
                                             <span class="sub-scale-title">${sub.name}</span>
