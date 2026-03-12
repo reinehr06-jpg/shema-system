@@ -1,4 +1,4 @@
-console.warn('--- SHEMA APP LOADED v4.0.6 ---');
+console.warn('--- SHEMA APP LOADED v1.0.0 ---');
 const API_URL = window.location.origin.includes('localhost') ? 'http://localhost:3002/api' : '/api';
 let currentUser = null;
 
@@ -3396,7 +3396,7 @@ async function updateRowStatus(teamId, role = 'leader') {
     } catch (e) { console.error(e); }
 }
 
-async function handleRowConnect(teamId, role = 'leader') {
+window.handleRowConnect = async function(teamId, role = 'leader') {
     const connId = `${teamId}_${role}`;
     const badge = document.getElementById(`status-badge-${connId}`);
     if (badge && badge.textContent === 'Conectado') return;
@@ -3499,7 +3499,7 @@ function renderQRCode(text) {
     }
 }
 
-async function handleWALogout(teamId, role = 'leader') {
+window.handleWALogout = async function(teamId, role = 'leader') {
     if (!confirm('Deseja realmente desconectar?')) return;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     try {
@@ -3891,14 +3891,7 @@ window.loadAccountConexoes = async function() {
     } catch (e) { console.error('Account connections error:', e); }
 }
 
-window.handleRowConnect = function(teamId) {
-    // If we are in account context, we might want a different flow or just call existing
-    if (typeof handleWAConnect === 'function') {
-        handleWAConnect(teamId, 'leader');
-    } else {
-        showToast('Função de conexão não encontrada.', 'error');
-    }
-}
+// Redundant handleRowConnect removed as the main one is now global
 
 window.filterAccountConnections = function (value) {
     const q = value.toLowerCase();
