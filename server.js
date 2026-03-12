@@ -862,10 +862,11 @@ app.get('/api/stats', (req, res) => {
             else if (age >= 36) ageDist['36+']++;
         });
 
+        const org = organization.get();
         res.json({
             teamCounts,
             ageDistribution: ageDist,
-            accountCode: 'SH7-2026', // Modernized code
+            accountCode: org ? org.account_code : 'AH7-23X',
             statMembers: allMembers.length,
             statTeams: teamCounts.length,
             statTrainings: trainings.getAll().length
