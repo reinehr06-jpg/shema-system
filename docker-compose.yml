@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  shema_app:
+    build: .
+    container_name: shema_app
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    depends_on:
+      - shema_redis
+
+  shema_redis:
+    image: redis:7-alpine
+    container_name: shema_redis
+    restart: always
+
+  shema_nginx:
+    image: nginx:alpine
+    container_name: shema_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - shema_app
