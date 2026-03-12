@@ -473,7 +473,10 @@ function showTab(tabId) {
     if (tabId === 'teamCalendar') { loadTeamCalendar(); }
     if (tabId === 'connections') { loadConnectionsContent(); }
     if (tabId === 'whatsapp') { loadConnectionsContent(); loadWhatsAppStatus(); }
-    if (tabId === 'profile') loadAccountPage();
+    if (tabId === 'profile') {
+        if (typeof window.loadAccountPage === 'function') window.loadAccountPage();
+        else if (typeof loadAccountPage === 'function') loadAccountPage();
+    }
     if (tabId === 'userDashboard') { loadAvailabilityCalendar(); }
     if (tabId === 'member_portal') { loadMemberPortal(); }
 }
@@ -3596,11 +3599,20 @@ window.loadAccountPage = async function() {
 }
 
 window.showAccountSection = function(section) {
+    console.log('Switching to account section:', section);
     const overview = document.getElementById('account-overview');
     if (overview) overview.style.display = 'none';
     document.querySelectorAll('.account-detail-view').forEach(v => v.style.display = 'none');
-    const target = document.getElementById('account-' + section);
-    if (target) target.style.display = '';
+    
+    const targetId = 'account-' + section;
+    const target = document.getElementById(targetId);
+    if (target) {
+        target.style.display = 'block';
+        console.log('Section visible:', targetId);
+    } else {
+        console.error('Target section not found:', targetId);
+        showToast('Erro: Seção ' + section + ' não encontrada.', 'error');
+    }
 
     // Load section data
     if (section === 'geral') loadAccountGeral();
