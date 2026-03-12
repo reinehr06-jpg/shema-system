@@ -1,0 +1,30 @@
+name: Deploy AWS EC2 Shema
+
+on:
+  push:
+    branches:
+      - main # Configurado para rodar sempre que código novo subir na branch main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Deploying via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          script: |
+            # Mude '/var/www/shema' para o diretorio real do projeto no servidor EC2
+            # Mude 'server' para o nome ou ID do seu app no PM2
+            cd /var/www/shema || exit
+            git pull origin main
+            npm install
+            pm2 restart server || pm2 restart all
+            echo "Deploy Concluido com Sucesso!"

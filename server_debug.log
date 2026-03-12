@@ -1,0 +1,18 @@
+Shemá Server running on http://localhost:3001
+2026-02-07T13:20:32.370Z - GET /api/stats
+Stats calculated successfully
+2026-02-07T13:20:32.374Z - GET /api/members
+2026-02-07T13:20:32.375Z - GET /api/teams
+2026-02-07T13:20:32.376Z - GET /api/trainings
+2026-02-07T13:20:35.713Z - GET /api/stats
+Stats calculated successfully
+2026-02-07T13:20:35.715Z - GET /api/members
+2026-02-07T13:20:35.716Z - GET /api/teams
+2026-02-07T13:20:35.717Z - GET /api/trainings
+2026-02-07T13:20:37.054Z - GET /api/members
+2026-02-07T13:21:40.769Z - GET /api/trainings
+2026-02-07T13:21:40.770Z - GET /api/teams
+2026-02-07T13:21:40.770Z - GET /api/members
+2026-02-07T13:21:40.771Z - GET /api/stats
+Stats calculated successfully
+2026-02-07T13:21:43.049Z - GET /api/members

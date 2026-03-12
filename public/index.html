@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shemá - Sistema de Escalas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Auth / Checkout Screen -->
+    <div id="auth-screen" class="active">
+        <div class="auth-container">
+            <div class="auth-header">
+                <img src="logo.png" alt="Shemá Logo" class="auth-logo">
+            </div>
+
+            <div class="auth-box">
+                <form id="loginForm">
+                    <h2>Entrar</h2>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn-primary full-width">Acessar</button>
+                    <div style="text-align: right; margin-top: 10px;">
+                        <a href="#" onclick="showForgot()"
+                            style="font-size: 0.85rem; color: var(--text-muted);">Esqueceu a senha?</a>
+                    </div>
+                    <p class="auth-switch">Não tem conta? <a href="#" onclick="showRegister()">Cadastre-se</a></p>
+                </form>
+
+                <!-- Password Recovery: Step 1 (Phone) -->
+                <form id="forgotForm" style="display: none;">
+                    <h2>Recuperar Senha</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                        Informe seu telefone cadastrado para receber um código por SMS.
+                    </p>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="forgotPhone" required placeholder="Ex: 51988887777">
+                    </div>
+                    <button type="submit" class="btn-primary full-width">Enviar Código</button>
+                    <p class="auth-switch"><a href="#" onclick="showLogin()">Voltar ao Login</a></p>
+                </form>
+
+                <!-- Password Recovery: Step 2 (Token Verification) -->
+                <div id="recoveryTokenStep" style="display: none;">
+                    <h2>Código de Verificação</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                        Insira o código de 6 dígitos que enviamos para o seu celular.
+                    </p>
+                    <div class="form-group">
+                        <label>Código SMS</label>
+                        <input type="text" id="recoveryToken" maxlength="6" required
+                            style="text-align: center; font-size: 1.2rem; letter-spacing: 5px;">
+                    </div>
+                    <button onclick="handleRecoveryToken()" class="btn-primary full-width">Verificar Código</button>
+                    <p class="auth-switch"><a href="#" onclick="showForgot()">Pedir novo código</a></p>
+                </div>
+
+                <!-- Password Recovery: Step 3 (CPF Verification) -->
+                <div id="recoveryCpfStep" style="display: none;">
+                    <h2>Confirmar Identidade</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                        Para sua segurança, confirme o CPF do titular desta conta.
+                    </p>
+                    <div class="form-group" style="text-align: center; margin-bottom: 15px;">
+                        <span id="maskedCpfLabel"
+                            style="font-family: monospace; font-size: 1.1rem; color: var(--primary);">*******123</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Informe o CPF completo</label>
+                        <input type="text" id="recoveryFullCpf" required placeholder="000.000.000-00">
+                    </div>
+                    <button onclick="handleRecoveryCpf()" class="btn-primary full-width">Validar CPF</button>
+                </div>
+
+                <!-- Password Recovery: Step 4 (New Password) -->
+                <form id="resetForm" style="display: none;">
+                    <h2>Nova Senha</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                        Quase lá! Agora escolha uma nova senha segura.
+                    </p>
+                    <div class="form-group">
+                        <label>Nova Senha</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="resetNewPassword" required>
+                            <i class="fas fa-eye" onclick="togglePasswordVisibility('resetNewPassword')"></i>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary full-width">Alterar Senha</button>
+                    <p class="auth-switch"><a href="#" onclick="showLogin()">Cancelar</a></p>
+                </form>
+
+                <form id="registerForm" style="display: none;">
+                    <h2>Cadastro</h2>
+                    <div class="form-group">
+                        <label>Nome Completo</label>
+                        <input type="text" id="regName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="regEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CPF/CNPJ da Igreja</label>
+                        <input type="text" id="regCpfCnpj" required placeholder="000.000.000-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" id="regPhone" required placeholder="Ex: 51988887777">
+                    </div>
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="password" id="regPassword" required>
+                    </div>
+
+                    <!-- Areas removed as per Phase 3 -->
+
+                    <button type="submit" class="btn-primary full-width">Cadastrar</button>
+                    <p class="auth-switch">Já tem conta? <a href="#" onclick="showLogin()">Entrar</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-screen">
+        <nav class="top-nav">
+            <div class="logo">
+                <img src="logo.png" alt="Shemá" class="nav-logo">
+            </div>
+            <ul class="nav-links">
+                <li class="active" onclick="showTab('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</li>
+                <li onclick="showTab('members')"><i class="fas fa-address-book"></i> Cadastros</li>
+                <li onclick="showTab('teamCalendar')"><i class="fas fa-calendar-alt"></i> Calendário</li>
+                <li onclick="showTab('trainings')"><i class="fas fa-play-circle"></i> Treinamentos</li>
+            </ul>
+            <div class="nav-right-icons">
+                <button class="nav-icon-btn" title="Notificações"><i class="fas fa-bell"></i></button>
+                <div class="user-profile" onclick="toggleUserDropdown(event)">
+                    <div class="avatar-icon"><i class="fas fa-user"></i></div>
+                    <div id="userDropdownMenu" class="dropdown-menu">
+                        <a href="#" class="dropdown-item" onclick="showTab('profile')"><i
+                                class="fas fa-user-circle"></i> Minha Conta</a>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-account-info">
+                            <small>Código da Conta:</small>
+                            <span class="dropdown-account-code" id="accountCodeDisplay">AH7-23X</span>
+                        </div>
+                        <button class="dropdown-qr-btn" onclick="generateQRCode()">
+                            <i class="fas fa-qrcode"></i> Gerar QR <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item" onclick="logout()"><i class="fas fa-sign-out-alt"></i>
+                            Sair</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard -->
+            <section id="dashboard" class="tab-content active">
+                <div class="header-flex" style="margin-bottom: 30px;">
+                    <button class="btn-back-arrow" onclick="navigateBack()"><i class="fas fa-arrow-left"></i></button>
+                    <h1 style="font-weight: 700; font-size: 1.8rem;">Dashboard</h1>
+                </div>
+
+                <!-- QR Overlay -->
+                <div id="qrOverlay" class="qr-overlay">
+                    <h3>Escaneie para Cadastrar</h3>
+                    <div id="qrcode"></div>
+                    <button onclick="document.getElementById('qrOverlay').style.display='none'">Fechar</button>
+                </div>
+
+                <!-- Stats Cards Row -->
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-green"><i class="fas fa-users"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Membros</span>
+                            <small>Total</small>
+                            <span class="stat-value" id="statMembers">0</span>
+                            <small class="stat-sub">Total cadastrados</small>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-gold"><i class="fas fa-layer-group"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Equipes</span>
+                            <small>Ativas</small>
+                            <span class="stat-value" id="statTeams">0</span>
+                            <small class="stat-sub">Ativas</small>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-green"><i class="fas fa-play-circle"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Treinamentos</span>
+                            <small>Disponíveis</small>
+                            <span class="stat-value" id="statTrainings">0</span>
+                            <small class="stat-sub">Disponíveis</small>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-green"><i class="fas fa-chart-line"></i></div>
+                        <div class="stat-content">
+                            <span class="stat-label">Participação</span>
+                            <small>Últimos 30 dias</small>
+                            <span class="stat-value" id="statParticipation">0%</span>
+                            <small class="stat-sub">Últimos 30 dias</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Membros por Equipe</h3>
+                        <canvas id="serviceChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Distribuição por Idade</h3>
+                            <div class="filter-box">
+                                <label>Filtrar por Setor:</label>
+                                <select id="statsFilter">
+                                    <option value="all">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-card-body">
+                            <canvas id="ageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Cards -->
+                <div class="action-cards">
+                    <div class="action-card">
+                        <div class="action-card-icon"><i class="fas fa-chart-bar"></i></div>
+                        <div class="action-card-info">
+                            <h3>Relatórios</h3>
+                            <p>Genere relatórios detalhados.</p>
+                        </div>
+                        <a href="#" class="btn-action" onclick="showTab('logs')">
+                            Ver Relatórios <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                    <div class="action-card">
+                        <div class="action-card-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div class="action-card-info">
+                            <h3>Disponibilidade</h3>
+                            <p>Gerencie suas disponibilidades.</p>
+                        </div>
+                        <a href="#" class="btn-action" onclick="showTab('userDashboard')">
+                            Ver Disponibilidade <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cadastros -->
+            <section id="members" class="tab-content">
+                <!-- Main Cadastros Dashboard View -->
+                <div id="cadastrosMainView">
+                    <!-- Header -->
+                    <div class="cadastros-header">
+                        <button class="btn-back-main" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <div class="cadastros-title">
+                            <h1>Cadastros</h1>
+                            <p>Gerencie e <strong>cadastre</strong> novos membros e equipes.</p>
+                        </div>
+                        <div class="cadastros-actions">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="cadastroSearch" placeholder="Buscar membros"
+                                    oninput="filterCadastros()">
+                            </div>
+                            <button class="btn-primary" onclick="showSectorForm()">
+                                <i class="fas fa-plus"></i> Novo Setor
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <!-- Stats Cards (8 Grid) -->
+                    <div class="cadastros-stats">
+                        <!-- Row 1 -->
+                        <div class="cad-stat-card" onclick="scrollToMemberList()" style="cursor:pointer;">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-users"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Membros</span>
+                                <span class="cad-stat-value" id="cadStatMembers">0</span>
+                                <small>Total cadastrados</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card" onclick="scrollToTeamList()" style="cursor:pointer;">
+                            <div class="cad-stat-icon" style="background:#fff8e1;"><i class="fas fa-layer-group"
+                                    style="color:#C9A227;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Equipes</span>
+                                <span class="cad-stat-value" id="cadStatTeams">0</span>
+                                <small>Equipes ativas</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-crown"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Líderes</span>
+                                <span class="cad-stat-value" id="cadStatLeaders">0</span>
+                                <small>Liderança total</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card" onclick="showSectorForm()" style="cursor:pointer;">
+                            <div class="cad-stat-icon" style="background:#fff8e1;"><i class="fas fa-building"
+                                    style="color:#C9A227;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Setores</span>
+                                <span class="cad-stat-value" id="cadStatSetores">0</span>
+                                <small>Setores cadastrados</small>
+                            </div>
+                        </div>
+
+                        <!-- Row 2 -->
+                        <div class="cad-stat-card" onclick="showSectorForm()" style="cursor:pointer;">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-sitemap"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Setores</span>
+                                <span class="cad-stat-value" id="cadStatSetores2">0</span>
+                                <small>Setores cadastrados</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card" onclick="showRoleForm()" style="cursor:pointer;">
+                            <div class="cad-stat-icon" style="background:#fff8e1;"><i class="fas fa-briefcase"
+                                    style="color:#C9A227;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Funções</span>
+                                <span class="cad-stat-value" id="cadStatFuncoes">0</span>
+                                <small>Funções cadastradas</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card" onclick="showBirthdayModal()" style="cursor: pointer;">
+                            <div class="cad-stat-icon" style="background:#e8f5e9;"><i class="fas fa-birthday-cake"
+                                    style="color:#1EBE5D;"></i></div>
+                            <div class="cad-stat-info">
+                                <span class="cad-stat-label">Aniversários</span>
+                                <span class="cad-stat-value" id="cadStatBirthdays">0</span>
+                                <small>Hoje</small>
+                            </div>
+                        </div>
+                        <div class="cad-stat-card cad-stat-chart">
+                            <!-- Gender Chart -->
+                            <div style="width: 100%; height: 60px; position: relative;">
+                                <canvas id="cadGenderChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dual Panel: Members + Teams -->
+                    <div class="cadastros-panels">
+                        <!-- Members Panel -->
+                        <div class="cad-panel">
+                            <div class="cad-panel-header">
+                                <h3>Lista de Membros</h3>
+                                <button class="btn-primary btn-sm" onclick="showMemberForm()">
+                                    <i class="fas fa-plus"></i> Adicionar Membro
+                                </button>
+                            </div>
+                            <div class="cad-panel-count" id="memberCountInfo">Mostrando 0 de 0 resultados</div>
+                            <div class="cad-table-wrapper">
+                                <table class="cad-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Setor</th>
+                                            <th>Função</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="memberTableBody">
+                                        <tr>
+                                            <td colspan="6" class="empty-state">Nenhum membro cadastrado</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="cad-pagination" id="memberPagination"></div>
+                            <div class="cad-panel-count cad-panel-count-bottom" id="memberCountBottom">Mostrando 0 de 0
+                                resultados</div>
+                        </div>
+
+                        <!-- Teams Panel -->
+                        <div class="cad-panel">
+                            <div class="cad-panel-header">
+                                <h3>Lista de Equipes</h3>
+                                <button class="btn-primary btn-sm" onclick="showTeamForm()">
+                                    <i class="fas fa-plus"></i> Adicionar Equipe
+                                </button>
+                            </div>
+                            <div class="cad-table-wrapper">
+                                <table class="cad-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Setor</th>
+                                            <th>Quantidade</th>
+                                            <th>Status</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="teamTableBody">
+                                        <tr>
+                                            <td colspan="5" class="empty-state">Nenhuma equipe cadastrada</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="cad-pagination" id="teamPagination"></div>
+                            <div class="cad-panel-count cad-panel-count-bottom" id="teamCountBottom">Nenhuma equipe
+                                cadastrada</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Member Registration Form View -->
+                <div id="memberFormView" style="display:none;">
+                    <button type="button" class="btn-back-view-text" onclick="closeMemberRegistration()">
+                        <i class="fas fa-chevron-left"></i> Cadastros > <strong>Adicionar Membro</strong>
+                    </button>
+
+                    <div class="registration-header-centered">
+                        <h2>Novo Membro</h2>
+                        <p>Preencha os campos abaixo para adicionar um <strong>novo membro</strong>.</p>
+                    </div>
+
+                    <div class="registration-card">
+                        <form id="memberFormDisplay" class="custom-form">
+                            <input type="hidden" id="mIdDisp" value="">
+                            <!-- Section: Personal Info -->
+                            <div class="form-section-header">
+                                <i class="fas fa-user-circle"></i> Informações Pessoais
+                            </div>
+
+                            <div class="form-layout-grid">
+                                <!-- Col 1: Photo -->
+                                <div class="photo-upload-wrapper">
+                                    <div class="photo-circle" id="memberPhotoPreview" onclick="triggerPhotoUpload()">
+                                        <i class="fas fa-user"></i>
+                                        <img id="photoImg" src="" style="display:none;" alt="Foto do Membro">
+                                        <div class="photo-overlay">
+                                            <i class="fas fa-camera"></i>
+                                        </div>
+                                        <!-- Hover Actions -->
+                                        <div class="photo-actions-hover is-empty" id="photoActionsHover">
+                                            <button type="button" class="btn-photo-action btn-add"
+                                                onclick="triggerPhotoUpload(event)"><i class="fas fa-plus"></i>
+                                                Adicionar Foto</button>
+                                            <button type="button" class="btn-photo-action btn-view"
+                                                onclick="viewPhoto(event)"><i class="fas fa-eye"></i> Ver</button>
+                                            <button type="button" class="btn-photo-action btn-edit"
+                                                onclick="triggerPhotoUpload(event)"><i class="fas fa-pen"></i>
+                                                Editar</button>
+                                        </div>
+                                    </div>
+                                    <span class="photo-label">Adicionar Foto</span>
+                                    <input type="file" id="memberPhotoInput" accept="image/*" style="display:none;"
+                                        onchange="handlePhotoSelect(event)">
+                                </div>
+
+                                <!-- Col 2: Fields -->
+                                <div class="personal-fields-grid">
+                                    <div class="form-group">
+                                        <input type="text" id="mNameDisp" required placeholder="Nome Completo"
+                                            class="input-rounded">
+                                    </div>
+                                    <div class="form-group" id="cpfGroupDisp">
+                                        <input type="text" id="mCpfDisp" placeholder="CPF" class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="phone-input-group">
+                                            <select id="mCountryCodeDisp" class="input-rounded country-select">
+                                                <option value="+55" data-flag="🇧🇷">🇧🇷 +55</option>
+                                                <option value="+1" data-flag="🇺🇸">🇺🇸 +1</option>
+                                                <option value="+351" data-flag="🇵🇹">🇵🇹 +351</option>
+                                                <option value="+44" data-flag="🇬🇧">🇬🇧 +44</option>
+                                                <option value="+34" data-flag="🇪🇸">🇪🇸 +34</option>
+                                                <option value="+49" data-flag="🇩🇪">🇩🇪 +49</option>
+                                                <option value="+33" data-flag="🇫🇷">🇫🇷 +33</option>
+                                                <option value="+39" data-flag="🇮🇹">🇮🇹 +39</option>
+                                            </select>
+                                            <input type="text" id="mPhoneDisp" placeholder="Telefone"
+                                                class="input-rounded">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" id="mBirthDateDisp"
+                                            placeholder="Data de Nascimento (DD/MM/AAAA)" class="input-rounded"
+                                            maxlength="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <select id="mGenderDisp" class="input-rounded">
+                                            <option value="">Gênero</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Feminino">Feminino</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" id="mNaturalityDisp" placeholder="Naturalidade (Opcional)"
+                                            class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <select id="mIsForeignerDisp" class="input-rounded"
+                                            onchange="toggleCpfFieldDisp()">
+                                            <option value="false">Brasileiro</option>
+                                            <option value="true">Estrangeiro</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <select id="mMaritalDisp" class="input-rounded">
+                                            <option value="">Estado Civil</option>
+                                            <option value="Solteiro(a)">Solteiro(a)</option>
+                                            <option value="Casado(a)">Casado(a)</option>
+                                            <option value="Divorciado(a)">Divorciado(a)</option>
+                                            <option value="Viúvo(a)">Viúvo(a)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" id="mEducationDisp" placeholder="Escolaridade (Opcional)"
+                                            class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" id="mProfessionDisp" placeholder="Profissão (Opcional)"
+                                            class="input-rounded">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section: Team, Sector & Access -->
+                            <div class="bottom-sections-grid">
+
+                                <!-- Sector Section -->
+                                <div class="sub-section">
+                                    <div class="form-section-header">
+                                        <i class="fas fa-layer-group"></i> Setor
+                                    </div>
+                                    <div class="sub-section-content">
+                                        <div class="form-group">
+                                            <select id="mSectorDisp" class="input-rounded">
+                                                <option value="">Selecionar Setor</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Access Section -->
+                                <div class="sub-section">
+                                    <div class="form-section-header">
+                                        <i class="fas fa-key"></i> Acesso ao Sistema
+                                    </div>
+                                    <div class="sub-section-content">
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="mCreateAccessDisp"
+                                                onchange="toggleAccessFields()">
+                                            <span class="checkmark"></span>
+                                            Criar Acesso
+                                        </label>
+                                        <div id="accessFields" style="display:none; margin-top:10px;">
+                                            <div class="form-group">
+                                                <input type="email" id="mUserEmailDisp" placeholder="Email de Acesso"
+                                                    class="input-rounded">
+                                            </div>
+                                            <div class="form-group">
+                                                <input type="password" id="mUserPasswordDisp"
+                                                    placeholder="Senha de Acesso" class="input-rounded">
+                                            </div>
+                                            <div class="form-group">
+                                                <select id="mUserRoleDisp" class="input-rounded">
+                                                    <option value="volunteer">Usuário</option>
+                                                    <option value="admin">Administrador</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions-right">
+                                <button type="button" class="btn-cancel"
+                                    onclick="event.preventDefault(); closeMemberRegistration()">Cancelar</button>
+                                <button type="submit" class="btn-success-large">+ Adicionar Membro</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Sector Registration Form View -->
+                <div id="sectorFormView" style="display:none;">
+                    <div class="registration-header-row">
+                        <h2>Novo Setor</h2>
+                        <p>Digite o nome do novo setor abaixo.</p>
+                    </div>
+                    <form id="sectorFormDisplay" class="registration-card">
+                        <div class="form-group">
+                            <input type="text" id="sectorNameInput" required
+                                placeholder="Nome do Setor (ex: Kids, Mídia...)" class="input-rounded">
+                        </div>
+                        <div class="form-actions-row">
+                            <button type="button" class="btn-secondary" onclick="hideSectorForm()">Cancelar</button>
+                            <button type="submit" class="btn-primary">Salvar Setor</button>
+                        </div>
+                    </form>
+
+                    <div class="registration-card" style="margin-top: 20px;">
+                        <div class="form-section-header">
+                            <i class="fas fa-list"></i> Setores Existentes
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th style="width: 80px;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sectorTableBody">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Registration Form View -->
+                <div id="teamFormView" style="display:none;">
+                    <button type="button" class="btn-back-view-text" onclick="hideTeamForm()">
+                        <i class="fas fa-chevron-left"></i> Equipes > <strong>Configurar Equipe</strong>
+                    </button>
+
+                    <div class="registration-header-row">
+                        <h2>Gestão de Equipes</h2>
+                        <button type="button" class="btn-back-view" onclick="hideTeamForm()">
+                            <i class="fas fa-arrow-left"></i> Voltar para Lista
+                        </button>
+                    </div>
+
+                    <div class="registration-card">
+                        <form id="teamFormDisplay" class="custom-form">
+                            <input type="hidden" id="tmIdDisp" value="">
+                            <!-- Section: Team Config -->
+                            <div class="form-section-header">
+                                <i class="fas fa-users-cog"></i> Configuração da Equipe
+                            </div>
+
+                            <div class="form-layout-grid">
+                                <!-- Col 1: Photo -->
+                                <div class="photo-upload-wrapper">
+                                    <div class="photo-circle" id="teamPhotoPreview" onclick="triggerTeamPhotoUpload()">
+                                        <i class="fas fa-user"></i>
+                                        <img id="teamPhotoImg" src="" style="display:none;" alt="Foto da Equipe">
+                                        <div class="photo-overlay">
+                                            <i class="fas fa-camera"></i>
+                                        </div>
+                                    </div>
+                                    <span class="photo-label">Adicionar Foto</span>
+                                    <input type="file" id="teamPhotoInput" accept="image/*" style="display:none;"
+                                        onchange="handleTeamPhotoSelect(event)">
+                                </div>
+
+                                <!-- Col 2: Fields -->
+                                <div class="personal-fields-grid">
+                                    <div class="form-group">
+                                        <label>Nome da Área *</label>
+                                        <select id="tmNameDisp" required class="input-rounded">
+                                            <option value="">Selecione a Área...</option>
+                                            <option value="KIDS">KIDS</option>
+                                            <option value="MÍDIA">MÍDIA</option>
+                                            <option value="VOLUNTÁRIOS">VOLUNTÁRIOS</option>
+                                            <option value="DIACONATO">DIACONATO</option>
+                                            <option value="ESTACIONAMENTO">ESTACIONAMENTO</option>
+                                            <option value="Intercessão / Oração">Intercessão / Oração</option>
+                                            <option value="Cantina / café / comunhão">Cantina / café / comunhão</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                        <div class="form-group" style="margin-top: 15px;">
+                                            <label>Setor Relacionado *</label>
+                                            <select id="tSectorDisp" class="input-rounded" required>
+                                                <option value="">Selecione o Setor...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="leader-grid" style="grid-template-columns: repeat(2, 1fr);">
+                                    <div class="form-group">
+                                        <label>Líder Geral</label>
+                                        <select id="tmGeneralDisp" required class="input-rounded">
+                                            <option value="">Selecione...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Líder Auxiliar 1</label>
+                                        <select id="tmSub1Disp" class="input-rounded">
+                                            <option value="">Selecione...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Líder Auxiliar 2</label>
+                                        <select id="tmSub2Disp" class="input-rounded">
+                                            <option value="">Selecione...</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Líder Auxiliar 3</label>
+                                        <select id="tmSub3Disp" class="input-rounded">
+                                            <option value="">Selecione...</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Section: Subdivisions -->
+                                <div class="form-section-header">
+                                    <i class="fas fa-sitemap"></i> Subdivisões da Equipe
+                                </div>
+
+                                <div id="subdivisionsContainerDisp"></div>
+                                <button type="button" class="btn-outline full-width" onclick="addSubdivisionRow()"
+                                    style="margin-top:10px; border-style:dashed;">
+                                    <i class="fas fa-plus"></i> Adicionar Subdivisão
+                                </button>
+
+                                <div class="form-actions-right">
+                                    <button type="button" class="btn-cancel"
+                                        onclick="event.preventDefault(); hideTeamForm()">Cancelar</button>
+                                    <button type="submit" class="btn-success-large">Salvar Equipe</button>
+                                </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Team Calendar -->
+            <section id="teamCalendar" class="tab-content">
+                <header id="calendarHeader">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="btn-back-main" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h1>Calendário da Equipe</h1>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button class="btn-outline" id="btnGoogleCalSync" onclick="syncGoogleCalendar()" title="Sincronizar Google Calendar" style="padding:8px 14px;">
+                            <i class="fab fa-google" style="color:#EA4335;"></i> Sincronizar
+                        </button>
+                        <button class="btn-primary" id="btnNewEvent" onclick="showEventForm()">
+                            <i class="fas fa-plus"></i> Novo Registro
+                        </button>
+                    </div>
+                    <button class="btn-back-view" id="btnBackToCalendar" onclick="hideEventForm()"
+                        style="display:none;">
+                        <i class="fas fa-arrow-left"></i> Voltar ao Calendário
+                    </button>
+                </header>
+
+                <!-- Calendar View with Side Panel -->
+                <div id="calendarView">
+                    <div class="calendar-layout">
+                        <!-- Left: Calendar Grid -->
+                        <div class="calendar-main">
+                            <div class="calendar-nav">
+                                <button class="btn-outline" onclick="changeMonth(-1)"><i
+                                        class="fas fa-chevron-left"></i></button>
+                                <h2 id="calendarMonthLabel"></h2>
+                                <button class="btn-outline" onclick="changeMonth(1)"><i
+                                        class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="calendar-weekdays">
+                                <span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span>
+                            </div>
+                            <div class="calendar-grid" id="calendarGrid"></div>
+                        </div>
+
+                        <!-- Right: Event Detail / Scale Panel -->
+                        <div class="side-panel" id="eventScalePanel">
+                            <div class="side-panel-header" id="sidePanelHeader">
+                                <h3>Selecione um evento</h3>
+                                <p style="font-size:0.8rem; color:var(--text-muted);">Clique em um evento no calendário
+                                    para gerenciar as escalas.</p>
+                            </div>
+                            <div class="side-panel-content" id="sidePanelContent">
+                                <div class="side-panel-empty">
+                                    <i class="fas fa-calendar-day"></i>
+                                    <p>Nenhum evento selecionado</p>
+                                </div>
+                            </div>
+                            <!-- Bottom Action: Add Team to Scale -->
+                            <div id="sidePanelActions"
+                                style="padding:15px; border-top:1px solid var(--border-color); display:none;">
+                                <select id="addTeamToEventSelect" class="input-rounded" style="margin-bottom:10px;">
+                                    <option value="">Conectar Equipe...</option>
+                                </select>
+                                <button class="btn-primary full-width" onclick="addTeamToCurrentEventScale()">
+                                    <i class="fas fa-plus"></i> Conectar Equipe
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Form -->
+                <div id="eventFormView" style="display:none;">
+                    <div class="registration-form-container">
+                        <form id="eventFormDisplay" class="custom-form">
+                            <input type="hidden" id="evId" value="">
+                            <div class="form-section">
+                                <h3><i class="fas fa-calendar-plus"></i> Informações do Evento</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Nome do Evento *</label>
+                                        <input type="text" id="evName" required placeholder="Ex: Ensaio de louvor"
+                                            class="input-rounded">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Horário *</label>
+                                        <input type="text" id="evTime" required placeholder="Ex: 19:00"
+                                            class="input-rounded">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Data *</label>
+                                    <input type="text" id="evDate" required class="input-rounded"
+                                        placeholder="DD/MM/AAAA">
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3><i class="fas fa-redo"></i> Recorrência</h3>
+                                <div class="recurrence-options">
+                                    <button type="button" class="rec-btn active" data-rec="none"
+                                        onclick="setRecurrence('none')">Nenhuma</button>
+                                    <button type="button" class="rec-btn" data-rec="weekly"
+                                        onclick="setRecurrence('weekly')">Semanal</button>
+                                    <button type="button" class="rec-btn" data-rec="monthly"
+                                        onclick="setRecurrence('monthly')">Mensal</button>
+                                    <button type="button" class="rec-btn" data-rec="custom"
+                                        onclick="setRecurrence('custom')">Personalizado</button>
+                                </div>
+                                <div id="recurrenceDetails" style="display:none; margin-top:15px;">
+                                    <div class="form-row">
+                                        <div class="form-group" id="recIntervalGroup" style="display:none;">
+                                            <label>Repetir a cada (dias)</label>
+                                            <input type="number" id="evRecInterval" min="1" value="7"
+                                                placeholder="Ex: 14">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Data Final da Recorrência</label>
+                                            <input type="text" id="evRecEnd" placeholder="DD/MM/AAAA"
+                                                class="input-rounded">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-actions-bar">
+                                <button type="button" class="btn-outline" onclick="hideEventForm()">Cancelar</button>
+                                <button type="submit" class="btn-primary-large">Salvar Evento</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section id="trainings" class="tab-content">
+                <header id="trainingHeader">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="btn-back-main" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h1>Treinamentos</h1>
+                    </div>
+                    <div id="trainingActions" style="display:flex; gap:10px;">
+                        <button class="btn-primary" onclick="showFolderForm()"><i class="fas fa-folder-plus"></i> Nova
+                            Pasta</button>
+                        <button class="btn-primary" onclick="showTrainingForm()"><i class="fas fa-video"></i> Novo
+                            Vídeo</button>
+                    </div>
+                    <button class="btn-back-view" id="btnBackToTrainings" onclick="hideTrainingForms()"
+                        style="display:none;">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                </header>
+
+                <!-- Breadcrumb -->
+                <div id="trainingBreadcrumb" style="margin-bottom:20px; color:#aaa; font-size:0.9rem;">
+                    <span onclick="loadTrainings()" style="cursor:pointer; color:var(--primary);">Início</span>
+                </div>
+
+                <!-- Folders/Videos Grid View -->
+                <div id="trainingsGridView">
+                    <div class="folders-grid" id="trainingFolders">
+                        <!-- Dynamic Grid -->
+                    </div>
+                </div>
+
+                <!-- Folder Creation View -->
+                <div id="folderFormView" style="display:none;">
+                    <div class="registration-form-container">
+                        <form id="folderFormDisplay" class="custom-form">
+                            <div class="form-section">
+                                <h3><i class="fas fa-folder-plus"></i> Nova Pasta de Treinamento</h3>
+                                <div class="form-group">
+                                    <label>Nome da Pasta</label>
+                                    <input type="text" id="fNameDisp" required
+                                        placeholder="Ex: Treinamento de Sonoplastia">
+                                </div>
+                            </div>
+                            <div class="form-actions-bar">
+                                <button type="button" class="btn-outline"
+                                    onclick="hideTrainingForms()">Cancelar</button>
+                                <button type="submit" class="btn-primary-large">Criar Pasta</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Training Video Creation View -->
+                <div id="trainingFormView" style="display:none;">
+                    <div class="registration-form-container">
+                        <form id="trainingFormDisplay" class="custom-form">
+                            <div class="form-section">
+                                <h3><i class="fas fa-video"></i> Novo Vídeo de Treinamento</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Título do Conteúdo</label>
+                                        <input type="text" id="tTitleDisp" required
+                                            placeholder="Ex: Aula 01 - Introdução">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tipo de Treinamento</label>
+                                        <select id="tTypeDisp" onchange="toggleTrainingType()">
+                                            <option value="youtube">Link do YouTube</option>
+                                            <option value="file">Arquivo (PDF, MP4, etc)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="urlGroupDisp">
+                                    <label>URL do YouTube</label>
+                                    <input type="url" id="tUrlDisp" placeholder="https://youtube.com/...">
+                                </div>
+                                <div class="form-group" id="fileGroupDisp" style="display:none;">
+                                    <label>Selecionar Arquivo (Máx 50MB)</label>
+                                    <input type="file" id="tFileInputDisp" class="input-rounded">
+                                </div>
+                                <div class="form-group">
+                                    <label>Pasta de Destino (Opcional)</label>
+                                    <input type="text" id="tFolderDisp" list="folderListDisp"
+                                        placeholder="Deixe em branco para a pasta atual">
+                                    <datalist id="folderListDisp"></datalist>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <textarea id="tDescDisp" placeholder="Breve descrição do conteúdo"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-actions-bar">
+                                <button type="button" class="btn-outline"
+                                    onclick="hideTrainingForms()">Cancelar</button>
+                                <button type="submit" class="btn-primary-large">Salvar Vídeo</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Inline Video Player View -->
+                <div id="videoPlayerView" style="display:none;">
+                    <div class="video-player-container">
+                        <div class="video-player-header">
+                            <h2 id="videoPlayerTitle">Título do Vídeo</h2>
+                            <button class="btn-back-view" onclick="closeVideoPlayer()">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </button>
+                        </div>
+                        <div class="video-player-wrapper">
+                            <div id="youtubePlayer"></div>
+                        </div>
+                        <div class="video-progress-section">
+                            <div class="video-progress-bar-container">
+                                <div class="video-progress-bar" id="videoProgressBar" style="width: 0%"></div>
+                            </div>
+                            <div class="video-progress-info">
+                                <span id="videoWatchedTime">0:00</span>
+                                <span id="videoProgressPercent">0% assistido</span>
+                                <span id="videoTotalTime">0:00</span>
+                            </div>
+                        </div>
+                        <div class="video-description-box" id="videoDescriptionBox">
+                            <h3><i class="fas fa-info-circle"></i> Descrição</h3>
+                            <p id="videoPlayerDescription">Sem descrição</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Dashboard (Availability) -->
+            <section id="userDashboard" class="tab-content">
+                <header class="header-flex" style="margin-bottom: 20px;">
+                    <h1>Minha Disponibilidade</h1>
+                </header>
+
+                <div class="availability-container">
+                    <div class="availability-header"
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:var(--bg-card); padding:15px; border-radius:10px;">
+                        <div class="calendar-nav" style="display:flex; align-items:center; gap:15px;">
+                            <button class="btn-secondary" onclick="changeAvailabilityMonth(-1)"><i
+                                    class="fas fa-chevron-left"></i></button>
+                            <h2 id="availabilityMonthTitle" style="margin:0; min-width:150px; text-align:center;">
+                                Mês/Ano</h2>
+                            <button class="btn-secondary" onclick="changeAvailabilityMonth(1)"><i
+                                    class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="availability-actions">
+                            <button class="btn-primary" onclick="confirmAvailability()"><i
+                                    class="fas fa-check-circle"></i> Confirmar Seleções</button>
+                        </div>
+                    </div>
+
+                    <div id="availabilityCalendar" class="calendar-grid">
+                        <!-- Dynamic Calendar -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs -->
+            <section id="logs" class="tab-content">
+                <header class="header-flex">
+                    <button class="btn-back-main" onclick="navigateBack()"><i class="fas fa-arrow-left"></i></button>
+                    <h1>Logs do Sistema</h1>
+                    <button class="btn-secondary" onclick="loadLogs()"><i class="fas fa-sync"></i> Atualizar</button>
+                </header>
+                <div class="team-list" id="logsList">
+                    <!-- Dynamic Logs -->
+                </div>
+            </section>
+
+            <!-- Conexões / WhatsApp -->
+            <section id="whatsapp" class="tab-content">
+                <header class="header-flex">
+                    <button class="btn-back-main" onclick="showTab('dashboard')"><i
+                            class="fas fa-arrow-left"></i></button>
+                    <h1>Conexões</h1>
+
+                    <!-- Account Code moved here -->
+                    <div class="account-info"
+                        style="margin-left: auto; display: flex; align-items: center; gap: 15px; background: #f8f9fa; padding: 5px 15px; border-radius: 10px;">
+                        <div style="text-align: right;">
+                            <small style="display: block; font-size: 0.7rem; color: #666;">Código da Conta</small>
+                            <span id="accountCodeDisplay" class="account-code"
+                                style="font-size: 1rem; margin: 0;">---</span>
+                        </div>
+                        <button class="btn-primary" onclick="generateQRCode()"
+                            style="padding: 8px 12px; font-size: 0.8rem;">
+                            <i class="fas fa-qrcode"></i> Gerar QR
+                        </button>
+                    </div>
+                </header>
+
+                <div class="whatsapp-container" style="max-width: 800px; margin: 20px auto;">
+                    <div id="wa-connection-card" class="registration-card" style="text-align: center; padding: 40px;">
+                        <div id="wa-status-badge" class="status-badge offline" style="margin-bottom: 20px;">Desconectado
+                        </div>
+
+                        <div id="wa-qr-container"
+                            style="display: none; margin: 20px auto; background: white; padding: 20px; width: fit-content; border-radius: 10px;">
+                            <h3>Escaneie o QR Code</h3>
+                            <div id="wa-qr-image" style="margin: 20px 0;"></div>
+                            <p id="wa-pairing-code"
+                                style="font-weight: bold; font-size: 1.2rem; color: var(--primary);"></p>
+                            <p style="font-size: 0.85rem; color: #666;">Acesse o WhatsApp > Aparelhos Conectados >
+                                Conectar um aparelho</p>
+                        </div>
+
+                        <div id="wa-online-info" style="display: none;">
+                            <i class="fab fa-whatsapp"
+                                style="font-size: 4rem; color: #25D366; margin-bottom: 20px;"></i>
+                            <h3>WhatsApp Conectado</h3>
+                            <p style="color: #666; margin-bottom: 20px;">Seu celular está pronto para enviar
+                                notificações automáticas.</p>
+                        </div>
+
+                        <div id="wa-actions" style="margin-top: 30px;">
+                            <button id="btn-wa-connect" class="btn-primary-large" onclick="connectWhatsApp()">Conectar
+                                WhatsApp</button>
+                            <button id="btn-wa-logout" class="btn-danger" style="display: none;"
+                                onclick="logoutWhatsApp()">Desconectar</button>
+                        </div>
+                    </div>
+
+                    <div id="wa-team-selector" class="registration-card" style="margin-top: 20px; display: none;">
+                        <h3>Gerenciar Instância da Equipe</h3>
+                        <select id="wa-team-select" class="input-rounded full-width" onchange="loadWhatsAppStatus()">
+                            <option value="">Selecione sua equipe...</option>
+                        </select>
+                    </div>
+
+                    <!-- Connections Table -->
+                    <div class="registration-card" style="margin-top: 20px;">
+                        <div
+                            style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="margin:0;">Instâncias por Equipe</h3>
+                            <div style="display:flex;gap:10px;">
+                                <input type="text" id="connSearch" placeholder="Buscar..." class="input-rounded"
+                                    style="width:200px;" oninput="filterConnections()">
+                                <button class="btn-primary" onclick="handleGlobalConnect()"
+                                    style="white-space:nowrap;"><i class="fas fa-plug"></i> Conectar Todos</button>
+                            </div>
+                        </div>
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead>
+                                <tr style="text-align:left; border-bottom: 2px solid var(--border-color);">
+                                    <th style="padding:10px;">Líder / Equipe</th>
+                                    <th style="padding:10px;">Status</th>
+                                    <th style="padding:10px; text-align:right;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="connections-list">
+                                <!-- Dynamic rows via loadConnectionsContent() -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== MINHA CONTA ===== -->
+            <section id="profile" class="tab-content">
+                <!-- Cards Grid Overview -->
+                <div id="account-overview">
+                    <div class="header-flex" style="margin-bottom: 10px;">
+                        <button class="btn-back-arrow" onclick="navigateBack()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h1 style="font-weight: 700; font-size: 1.8rem;">Minha Conta</h1>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">Gerencie configurações, segurança e
+                        integrações da sua organização</p>
+
+                    <div class="account-search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="accountSearch" placeholder="Buscar configurações..."
+                            class="input-rounded" oninput="filterAccountCards(this.value)"
+                            style="flex:1; border: none; background: transparent; outline: none; font-size: 0.95rem;">
+                    </div>
+
+                    <div class="account-cards-grid">
+                        <!-- Geral -->
+                        <div class="account-card" data-section="geral" onclick="showAccountSection('geral')">
+                            <div class="account-card-icon" style="background: #E8F5E9;"><i class="fas fa-building"
+                                    style="color: #2E7D32;"></i></div>
+                            <div class="account-card-body">
+                                <h3>Geral</h3>
+                                <p>Informações da organização<br>Código da conta, logo, dados principais</p>
+                            </div>
+                            <div class="account-card-footer">
+                                <span class="account-card-badge"><i class="fas fa-address-card"></i> Meus dados</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        <!-- Segurança -->
+                        <div class="account-card" data-section="seguranca" onclick="showAccountSection('seguranca')">
+                            <div class="account-card-icon" style="background: #FFF8E1;"><i class="fas fa-lock"
+                                    style="color: #F9A825;"></i></div>
+                            <div class="account-card-body">
+                                <h3>Segurança</h3>
+                                <p>Gerencie senha,<br>autenticação 2FA e sessões ativas</p>
+                            </div>
+                            <div class="account-card-footer">
+                                <span class="account-card-badge badge-green"><i class="fas fa-shield-alt"></i>
+                                    Protegida</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        <!-- Plano -->
+                        <div class="account-card" data-section="plano" onclick="showAccountSection('plano')">
+                            <div class="account-card-icon" style="background: #E3F2FD;"><i class="fas fa-chart-bar"
+                                    style="color: #1565C0;"></i></div>
+                            <div class="account-card-body">
+                                <h3>Plano</h3>
+                                <p>Plano atual, limites,<br>cobrança, upgrade</p>
+                            </div>
+                            <div class="account-card-footer">
+                                <span class="account-card-badge badge-gold"><i class="fas fa-crown"></i> Plano
+                                    Pro</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        <!-- Conexões -->
+                        <div class="account-card" data-section="conexoes" onclick="showAccountSection('conexoes')">
+                            <div class="account-card-icon" style="background: #E8F5E9;"><i class="fab fa-whatsapp"
+                                    style="color: #25D366;"></i></div>
+                            <div class="account-card-body">
+                                <h3>Conexões</h3>
+                                <p>WhatsApp e futuras<br>integrações</p>
+                            </div>
+                            <div class="account-card-footer">
+                                <span class="account-card-badge" id="account-conn-badge"><i class="fas fa-plug"></i>
+                                    <span id="account-conn-count">0</span> conectado</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        <!-- Usuários -->
+                        <div class="account-card" data-section="usuarios" onclick="showAccountSection('usuarios')">
+                            <div class="account-card-icon" style="background: #E0F2F1;"><i class="fas fa-users-cog"
+                                    style="color: #00897B;"></i></div>
+                            <div class="account-card-body">
+                                <h3>Usuários</h3>
+                                <p>Gerencie usuários,<br>permissões e níveis de acesso</p>
+                            </div>
+                            <div class="account-card-footer">
+                                <span class="account-card-badge"><i class="fas fa-user-check"></i> <span
+                                        id="account-user-count">0</span> usuários ativos</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                        <!-- Preferências -->
+                        <div class="account-card" data-section="preferencias"
+                            onclick="showAccountSection('preferencias')">
+                            <div class="account-card-icon" style="background: #E3F2FD;"><i class="fas fa-globe"
+                                    style="color: #1976D2;"></i></div>
+                            <div class="account-card-body">
+                                <h3>Preferências</h3>
+                                <p>Idioma, fuso horário,<br>notificações</p>
+                            </div>
+                            <div class="account-card-footer">
+                                <span class="account-card-badge"><i class="fas fa-cog"></i> Configurar</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== DETAIL VIEWS ===== -->
+
+                <!-- GERAL -->
+                <div id="account-geral" class="account-detail-view" style="display:none;">
+                    <div class="account-detail-header">
+                        <button class="btn-back-arrow" onclick="backToAccountGrid()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2><i class="fas fa-building" style="color: #2E7D32; margin-right: 8px;"></i> Geral</h2>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-landmark"></i> Dados da Organização</h3>
+                        <div class="account-form-grid">
+                            <div class="form-group">
+                                <label>Nome da Organização</label>
+                                <input type="text" id="org-name" class="input-rounded full-width"
+                                    placeholder="Nome da organização">
+                            </div>
+                            <div class="form-group">
+                                <label>Código da Conta</label>
+                                <input type="text" id="org-code" class="input-rounded full-width" readonly
+                                    style="background: var(--bg-secondary); font-weight: 600;">
+                            </div>
+                            <div class="form-group">
+                                <label>Data de Criação</label>
+                                <input type="text" id="org-created" class="input-rounded full-width" readonly
+                                    style="background: var(--bg-secondary);">
+                            </div>
+                            <div class="form-group">
+                                <label>Status da Conta</label>
+                                <div class="status-badge-display" id="org-status-badge">
+                                    <span class="badge badge-green"><i class="fas fa-check-circle"></i> Ativa</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Logo da Organização</label>
+                            <div class="logo-upload-area" id="org-logo-area">
+                                <div class="logo-preview" id="org-logo-preview">
+                                    <i class="fas fa-image" style="font-size: 2rem; color: #ccc;"></i>
+                                    <span>Nenhuma logo</span>
+                                </div>
+                                <div class="logo-actions">
+                                    <label class="btn-outline" style="cursor:pointer;"><i class="fas fa-upload"></i>
+                                        Upload Logo<input type="file" id="org-logo-input" accept="image/*"
+                                            style="display:none;" onchange="uploadOrgLogo(this)"></label>
+                                    <button class="btn-outline btn-danger-outline" onclick="removeOrgLogo()"><i
+                                            class="fas fa-trash"></i> Remover</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-address-card"></i> Contato Principal</h3>
+                        <div class="account-form-grid">
+                            <div class="form-group">
+                                <label>Email Principal</label>
+                                <input type="email" id="org-email" class="input-rounded full-width"
+                                    placeholder="email@organização.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="text" id="org-phone" class="input-rounded full-width"
+                                    placeholder="(00) 00000-0000">
+                            </div>
+                            <div class="form-group">
+                                <label>Endereço</label>
+                                <input type="text" id="org-address" class="input-rounded full-width"
+                                    placeholder="Rua, número, cidade">
+                            </div>
+                            <div class="form-group">
+                                <label>Responsável Legal</label>
+                                <input type="text" id="org-responsible" class="input-rounded full-width"
+                                    placeholder="Nome do responsável">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-qrcode"></i> QR Code</h3>
+                        <div style="display:flex; align-items:center; gap: 24px; flex-wrap: wrap;">
+                            <div id="org-qr-display"
+                                style="width:180px; height:180px; border: 2px dashed var(--border-color); border-radius: 12px; display:flex; align-items:center; justify-content:center;">
+                            </div>
+                            <div>
+                                <p style="color: var(--text-secondary); margin-bottom:12px;">QR Code para cadastro de
+                                    membros</p>
+                                <button class="btn-primary" onclick="generateQRCode()"><i class="fas fa-qrcode"></i>
+                                    Gerar Novo QR</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                        <button class="btn-outline" onclick="backToAccountGrid()">Cancelar</button>
+                        <button class="btn-primary" onclick="saveAccountGeral()"><i class="fas fa-save"></i> Salvar
+                            Alterações</button>
+                    </div>
+                </div>
+
+                <!-- SEGURANÇA -->
+                <div id="account-seguranca" class="account-detail-view" style="display:none;">
+                    <div class="account-detail-header">
+                        <button class="btn-back-arrow" onclick="backToAccountGrid()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2><i class="fas fa-lock" style="color: #F9A825; margin-right: 8px;"></i> Segurança</h2>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-key"></i> Senha</h3>
+                        <div class="account-form-grid">
+                            <div class="form-group">
+                                <label>Senha Atual</label>
+                                <input type="password" id="sec-current-pass" class="input-rounded full-width"
+                                    placeholder="••••••••">
+                            </div>
+                            <div class="form-group">
+                                <label>Nova Senha</label>
+                                <input type="password" id="sec-new-pass" class="input-rounded full-width"
+                                    placeholder="Mínimo 6 caracteres">
+                            </div>
+                            <div class="form-group">
+                                <label>Confirmar Nova Senha</label>
+                                <input type="password" id="sec-confirm-pass" class="input-rounded full-width"
+                                    placeholder="Repita a nova senha">
+                            </div>
+                        </div>
+                        <button class="btn-primary" onclick="changeAccountPassword()" style="margin-top:10px;"><i
+                                class="fas fa-key"></i> Alterar Senha</button>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-shield-alt"></i> Autenticação em Dois Fatores (2FA)</h3>
+                        <div class="toggle-row">
+                            <div>
+                                <strong>Ativar 2FA</strong>
+                                <p style="color:var(--text-secondary); font-size:.85rem;">Adiciona uma camada extra de
+                                    proteção ao login</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="sec-2fa-enabled"><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label>Tipo de 2FA</label>
+                            <select id="sec-2fa-type" class="input-rounded full-width">
+                                <option value="app">App Authenticator</option>
+                                <option value="sms">SMS</option>
+                            </select>
+                        </div>
+                        <div class="toggle-row">
+                            <div>
+                                <strong>Exigir 2FA para todos os usuários</strong>
+                                <p style="color:var(--text-secondary); font-size:.85rem;">Força todos os usuários a
+                                    habilitar 2FA</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="sec-2fa-force"><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-desktop"></i> Sessões Ativas</h3>
+                        <div style="overflow-x:auto;">
+                            <table class="account-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dispositivo</th>
+                                        <th>IP</th>
+                                        <th>Última Atividade</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessions-list"></tbody>
+                            </table>
+                        </div>
+                        <button class="btn-outline btn-danger-outline" onclick="endAllSessions()"
+                            style="margin-top:10px;"><i class="fas fa-sign-out-alt"></i> Encerrar Todas as
+                            Sessões</button>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-history"></i> Histórico de Logins</h3>
+                        <div style="overflow-x:auto;">
+                            <table class="account-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>IP</th>
+                                        <th>Status</th>
+                                        <th>Data/Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="login-history-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PLANO -->
+                <div id="account-plano" class="account-detail-view" style="display:none;">
+                    <div class="account-detail-header">
+                        <button class="btn-back-arrow" onclick="backToAccountGrid()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2><i class="fas fa-chart-bar" style="color: #1565C0; margin-right: 8px;"></i> Plano</h2>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-crown"></i> Plano Atual</h3>
+                        <div class="plan-summary-card">
+                            <div class="plan-info-row">
+                                <div><strong>Plano</strong>
+                                    <p id="plan-name">—</p>
+                                </div>
+                                <div><strong>Status</strong>
+                                    <p id="plan-status">—</p>
+                                </div>
+                                <div><strong>Ciclo</strong>
+                                    <p id="plan-cycle">—</p>
+                                </div>
+                                <div><strong>Próxima Cobrança</strong>
+                                    <p id="plan-next-billing">—</p>
+                                </div>
+                                <div><strong>Valor</strong>
+                                    <p id="plan-price" style="font-weight:700; color:var(--primary-color);">—</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-chart-line"></i> Limites de Uso</h3>
+                        <div id="plan-limits-container"></div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-dollar-sign"></i> Ações</h3>
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button class="btn-primary"><i class="fas fa-arrow-up"></i> Fazer Upgrade</button>
+                            <button class="btn-outline"><i class="fas fa-sync"></i> Alterar Ciclo</button>
+                            <button class="btn-outline btn-danger-outline"><i class="fas fa-times-circle"></i> Cancelar
+                                Plano</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CONEXÕES -->
+                <div id="account-conexoes" class="account-detail-view" style="display:none;">
+                    <div class="account-detail-header">
+                        <button class="btn-back-arrow" onclick="backToAccountGrid()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2><i class="fab fa-whatsapp" style="color: #25D366; margin-right: 8px;"></i> Conexões</h2>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fab fa-whatsapp"></i> WhatsApp</h3>
+                        <div class="wa-status-card" id="account-wa-status-card">
+                            <div class="wa-status-row">
+                                <div><strong>Status</strong>
+                                    <p id="account-wa-status"><span class="badge badge-red">Desconectado</span></p>
+                                </div>
+                                <div><strong>Número Conectado</strong>
+                                    <p id="account-wa-number">—</p>
+                                </div>
+                                <div><strong>Última Sincronização</strong>
+                                    <p id="account-wa-last-sync">—</p>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:12px; margin-top:15px; flex-wrap:wrap;">
+                                <button class="btn-primary" onclick="connectWhatsApp()"><i class="fas fa-plug"></i>
+                                    Reconectar</button>
+                                <button class="btn-outline btn-danger-outline" onclick="disconnectWhatsApp()"><i
+                                        class="fas fa-unlink"></i> Desconectar</button>
+                                <button class="btn-outline" onclick="connectWhatsApp()"><i class="fas fa-qrcode"></i>
+                                    Gerar Novo QR</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-list"></i> Instâncias por Equipe</h3>
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                            <input type="text" id="accountConnSearch" placeholder="Buscar..." class="input-rounded"
+                                style="width:250px;" oninput="filterAccountConnections(this.value)">
+                            <button class="btn-primary" onclick="handleGlobalConnect()"><i class="fas fa-plug"></i>
+                                Conectar Todos</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="account-table">
+                                <thead>
+                                    <tr>
+                                        <th>Líder / Equipe</th>
+                                        <th>Status</th>
+                                        <th style="text-align:right;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="account-connections-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USUÁRIOS -->
+                <div id="account-usuarios" class="account-detail-view" style="display:none;">
+                    <div class="account-detail-header">
+                        <button class="btn-back-arrow" onclick="backToAccountGrid()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2><i class="fas fa-users-cog" style="color: #00897B; margin-right: 8px;"></i> Usuários</h2>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                            <h3 style="margin:0;"><i class="fas fa-list"></i> Lista de Usuários</h3>
+                            <button class="btn-primary" onclick="showAddUserForm()"><i class="fas fa-plus"></i>
+                                Adicionar Usuário</button>
+                        </div>
+
+                        <!-- Add User Form (hidden) -->
+                        <div id="add-user-form" class="add-user-form" style="display:none;">
+                            <h4>Novo Usuário</h4>
+                            <div class="account-form-grid">
+                                <div class="form-group"><label>Nome</label><input type="text" id="new-user-name"
+                                        class="input-rounded full-width" placeholder="Nome completo"></div>
+                                <div class="form-group"><label>Email</label><input type="email" id="new-user-email"
+                                        class="input-rounded full-width" placeholder="email@exemplo.com"></div>
+                                <div class="form-group"><label>Senha</label><input type="password" id="new-user-pass"
+                                        class="input-rounded full-width" placeholder="Mínimo 6 caracteres"></div>
+                                <div class="form-group"><label>Cargo</label>
+                                    <select id="new-user-role" class="input-rounded full-width">
+                                        <option value="admin">Admin</option>
+                                        <option value="leader">Líder</option>
+                                        <option value="volunteer" selected>Voluntário</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button class="btn-primary" onclick="addNewUser()"><i class="fas fa-save"></i>
+                                    Salvar</button>
+                                <button class="btn-outline"
+                                    onclick="document.getElementById('add-user-form').style.display='none'">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <div style="overflow-x:auto;">
+                            <table class="account-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Email</th>
+                                        <th>Cargo</th>
+                                        <th>Status</th>
+                                        <th>Último Acesso</th>
+                                        <th style="text-align:right;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PREFERÊNCIAS -->
+                <div id="account-preferencias" class="account-detail-view" style="display:none;">
+                    <div class="account-detail-header">
+                        <button class="btn-back-arrow" onclick="backToAccountGrid()"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2><i class="fas fa-globe" style="color: #1976D2; margin-right: 8px;"></i> Preferências</h2>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-language"></i> Idioma</h3>
+                        <select id="pref-language" class="input-rounded" style="width:300px;">
+                            <option value="pt-BR">🇧🇷 Português (Brasil)</option>
+                            <option value="en-US">🇺🇸 English</option>
+                            <option value="es-ES">🇪🇸 Español</option>
+                        </select>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-clock"></i> Fuso Horário</h3>
+                        <select id="pref-timezone" class="input-rounded" style="width:300px;">
+                            <option value="America/Sao_Paulo">América/São Paulo (BRT, -03:00)</option>
+                            <option value="America/Manaus">América/Manaus (AMT, -04:00)</option>
+                            <option value="America/Bahia">América/Bahia (BRT, -03:00)</option>
+                            <option value="America/New_York">América/Nova York (EST, -05:00)</option>
+                            <option value="Europe/Lisbon">Europa/Lisboa (WET, +00:00)</option>
+                        </select>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-bell"></i> Notificações</h3>
+                        <div class="toggle-row">
+                            <div><strong>Receber notificações por email</strong></div>
+                            <label class="toggle-switch"><input type="checkbox" id="pref-notif-email" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="toggle-row">
+                            <div><strong>Alertas de login</strong>
+                                <p style="color:var(--text-secondary);font-size:.85rem;">Receba avisos de novos logins
+                                    na conta</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="pref-notif-login" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="toggle-row">
+                            <div><strong>Resumo semanal</strong>
+                                <p style="color:var(--text-secondary);font-size:.85rem;">Relatório semanal de atividades
+                                </p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="pref-notif-weekly"><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="toggle-row">
+                            <div><strong>Alertas de participação baixa</strong>
+                                <p style="color:var(--text-secondary);font-size:.85rem;">Quando membros não participam
+                                    por tempo prolongado</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="pref-notif-participation"
+                                    checked><span class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="account-detail-section">
+                        <h3><i class="fas fa-paint-brush"></i> Interface</h3>
+                        <div class="toggle-row">
+                            <div><strong>Tema Escuro</strong>
+                                <p style="color:var(--text-secondary);font-size:.85rem;">Ativar modo noturno</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="pref-theme-dark"
+                                    onchange="toggleThemePreview(this.checked)"><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="form-group" style="margin-top:15px;">
+                            <label>Cor Principal do Sistema</label>
+                            <div class="color-picker-row">
+                                <input type="color" id="pref-primary-color" value="#1EBE5D"
+                                    style="width:50px; height:40px; border:none; border-radius:8px; cursor:pointer;">
+                                <span id="pref-color-hex"
+                                    style="font-family:monospace; color:var(--text-secondary);">#1EBE5D</span>
+                            </div>
+                        </div>
+                        <div class="toggle-row">
+                            <div><strong>Exibir métricas avançadas no dashboard</strong></div>
+                            <label class="toggle-switch"><input type="checkbox" id="pref-advanced-metrics"><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                        <button class="btn-outline" onclick="backToAccountGrid()">Cancelar</button>
+                        <button class="btn-primary" onclick="saveAccountPreferencias()"><i class="fas fa-save"></i>
+                            Salvar Preferências</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- QR Code Modal for WhatsApp Connections -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: space-between;">
+                <h2 style="font-size: 1.1rem;"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Conectar WhatsApp
+                </h2>
+                <span class="close" onclick="closeQRModal()">&times;</span>
+            </div>
+            <div id="wa-qr-display"
+                style="margin: 20px auto; min-height: 260px; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="color:#ccc;"></i>
+            </div>
+            <p id="wa-pairing-code"
+                style="font-weight: bold; font-size: 1.2rem; color: var(--primary); margin-bottom: 10px;"></p>
+            <p style="font-size: 0.85rem; color: #666;">Abra o WhatsApp > Aparelhos Conectados > Conectar um aparelho
+            </p>
+            <button class="btn-outline" onclick="closeQRModal()" style="margin-top: 15px;">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmModal" class="confirm-modal-overlay" style="display:none;">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 id="confirmModalTitle">Confirmar</h3>
+            <p id="confirmModalMessage">Tem certeza?</p>
+            <div class="confirm-modal-actions">
+                <button class="btn-outline" id="confirmModalCancel">Cancelar</button>
+                <button class="btn-danger" id="confirmModalConfirm">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Birthday Modal -->
+    <div id="birthdayModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBirthdayModal()">&times;</span>
+            <h2>Aniversariantes de Hoje <i class="fas fa-birthday-cake" style="color:#1EBE5D"></i></h2>
+            <div id="birthdayList" class="birthday-list">
+                <p class="empty-state">Nenhum aniversariante hoje.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=4.0"></script>
+    <div style="position:fixed; bottom:5px; right:5px; font-size:10px; color:#ccc; z-index:9999;">v4.0</div>
+    <!-- Team Members Popup Modal -->
+    <div id="teamMembersModal" class="team-modal-overlay" style="display:none;"
+        onclick="if(event.target===this)closeTeamModal()">
+        <div class="team-modal">
+            <div class="team-modal-header">
+                <h3 id="teamModalTitle">Membros da Equipe</h3>
+                <button class="team-modal-close" onclick="closeTeamModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="teamModalBody" class="team-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Availability Modal -->
+    <div id="availabilityModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <span class="close" onclick="closeAvailabilityModal()">&times;</span>
+            <h2 id="availModalTitle">Disponibilidade</h2>
+            <p id="availModalDate" style="color:#aaa; margin-bottom:20px;"></p>
+            <div class="form-group">
+                <label>Área que desejo servir:</label>
+                <select id="availTeamSelect" class="input-rounded full-width">
+                    <option value="">Nenhuma / Não posso servir</option>
+                </select>
+            </div>
+            <div class="form-actions" style="margin-top:20px; display:flex; gap:10px;">
+                <button class="btn-outline full-width" onclick="closeAvailabilityModal()">Cancelar</button>
+                <button class="btn-primary full-width" onclick="saveAvailability()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+
+
+</body>
+
+</html>
