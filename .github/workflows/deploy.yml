@@ -23,6 +23,6 @@ jobs:
           script: |
             cd /var/www/app || exit
             git pull origin main
-            docker-compose down
-            docker-compose up -d --build
+            docker-compose build --no-cache shema_app
+            docker-compose up -d --no-deps shema_app
             echo "Deploy Concluido com Sucesso!"
