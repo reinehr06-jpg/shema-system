@@ -3605,6 +3605,13 @@ input.field-error {
     flex-direction: column;
     gap: 14px;
     box-shadow: var(--shadow-sm);
+    /* Reset button native styles */
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    width: 100%;
 }
 
 .account-card:hover {

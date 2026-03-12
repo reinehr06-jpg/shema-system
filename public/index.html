@@ -1170,9 +1170,8 @@
 
                     <div class="account-cards-grid">
                         <!-- Geral -->
-                        <div class="account-card" data-section="geral" onclick="showAccountSection('geral')">
-                            <div class="account-card-icon" style="background: #E8F5E9;"><i class="fas fa-building"
-                                    style="color: #2E7D32;"></i></div>
+                        <button type="button" class="account-card" onclick="showAccountSection('geral')">
+                            <div class="account-card-icon" style="background: #E8F5E9;"><i class="fas fa-building" style="color: #2E7D32;"></i></div>
                             <div class="account-card-body">
                                 <h3>Geral</h3>
                                 <p>Informações da organização<br>Código da conta, logo, dados principais</p>
@@ -1181,68 +1180,58 @@
                                 <span class="account-card-badge"><i class="fas fa-address-card"></i> Meus dados</span>
                                 <i class="fas fa-chevron-right"></i>
                             </div>
-                        </div>
+                        </button>
                         <!-- Segurança -->
-                        <div class="account-card" data-section="seguranca" onclick="showAccountSection('seguranca')">
-                            <div class="account-card-icon" style="background: #FFF8E1;"><i class="fas fa-lock"
-                                    style="color: #F9A825;"></i></div>
+                        <button type="button" class="account-card" onclick="showAccountSection('seguranca')">
+                            <div class="account-card-icon" style="background: #FFF8E1;"><i class="fas fa-lock" style="color: #F9A825;"></i></div>
                             <div class="account-card-body">
                                 <h3>Segurança</h3>
                                 <p>Gerencie senha,<br>autenticação 2FA e sessões ativas</p>
                             </div>
                             <div class="account-card-footer">
-                                <span class="account-card-badge badge-green"><i class="fas fa-shield-alt"></i>
-                                    Protegida</span>
+                                <span class="account-card-badge badge-green"><i class="fas fa-shield-alt"></i> Protegida</span>
                                 <i class="fas fa-chevron-right"></i>
                             </div>
-                        </div>
+                        </button>
                         <!-- Plano -->
-                        <div class="account-card" data-section="plano" onclick="showAccountSection('plano')">
-                            <div class="account-card-icon" style="background: #E3F2FD;"><i class="fas fa-chart-bar"
-                                    style="color: #1565C0;"></i></div>
+                        <button type="button" class="account-card" onclick="showAccountSection('plano')">
+                            <div class="account-card-icon" style="background: #E3F2FD;"><i class="fas fa-chart-bar" style="color: #1565C0;"></i></div>
                             <div class="account-card-body">
                                 <h3>Plano</h3>
                                 <p>Plano atual, limites,<br>cobrança, upgrade</p>
                             </div>
                             <div class="account-card-footer">
-                                <span class="account-card-badge badge-gold"><i class="fas fa-crown"></i> Plano
-                                    Pro</span>
+                                <span class="account-card-badge badge-gold"><i class="fas fa-crown"></i> Plano Pro</span>
                                 <i class="fas fa-chevron-right"></i>
                             </div>
-                        </div>
+                        </button>
                         <!-- Conexões -->
-                        <div class="account-card" data-section="conexoes" onclick="showAccountSection('conexoes')">
-                            <div class="account-card-icon" style="background: #E8F5E9;"><i class="fab fa-whatsapp"
-                                    style="color: #25D366;"></i></div>
+                        <button type="button" class="account-card" onclick="showAccountSection('conexoes')">
+                            <div class="account-card-icon" style="background: #E8F5E9;"><i class="fab fa-whatsapp" style="color: #25D366;"></i></div>
                             <div class="account-card-body">
                                 <h3>Conexões</h3>
                                 <p>WhatsApp e futuras<br>integrações</p>
                             </div>
                             <div class="account-card-footer">
-                                <span class="account-card-badge" id="account-conn-badge"><i class="fas fa-plug"></i>
-                                    <span id="account-conn-count">0</span> conectado</span>
+                                <span class="account-card-badge" id="account-conn-badge"><i class="fas fa-plug"></i> <span id="account-conn-count">0</span> conectado</span>
                                 <i class="fas fa-chevron-right"></i>
                             </div>
-                        </div>
+                        </button>
                         <!-- Usuários -->
-                        <div class="account-card" data-section="usuarios" onclick="showAccountSection('usuarios')">
-                            <div class="account-card-icon" style="background: #E0F2F1;"><i class="fas fa-users-cog"
-                                    style="color: #00897B;"></i></div>
+                        <button type="button" class="account-card" onclick="showAccountSection('usuarios')">
+                            <div class="account-card-icon" style="background: #E0F2F1;"><i class="fas fa-users-cog" style="color: #00897B;"></i></div>
                             <div class="account-card-body">
                                 <h3>Usuários</h3>
                                 <p>Gerencie usuários,<br>permissões e níveis de acesso</p>
                             </div>
                             <div class="account-card-footer">
-                                <span class="account-card-badge"><i class="fas fa-user-check"></i> <span
-                                        id="account-user-count">0</span> usuários ativos</span>
+                                <span class="account-card-badge"><i class="fas fa-user-check"></i> <span id="account-user-count">0</span> usuários ativos</span>
                                 <i class="fas fa-chevron-right"></i>
                             </div>
-                        </div>
+                        </button>
                         <!-- Preferências -->
-                        <div class="account-card" data-section="preferencias"
-                            onclick="showAccountSection('preferencias')">
-                            <div class="account-card-icon" style="background: #E3F2FD;"><i class="fas fa-globe"
-                                    style="color: #1976D2;"></i></div>
+                        <button type="button" class="account-card" onclick="showAccountSection('preferencias')">
+                            <div class="account-card-icon" style="background: #E3F2FD;"><i class="fas fa-globe" style="color: #1976D2;"></i></div>
                             <div class="account-card-body">
                                 <h3>Preferências</h3>
                                 <p>Idioma, fuso horário,<br>notificações</p>
@@ -1251,7 +1240,7 @@
                                 <span class="account-card-badge"><i class="fas fa-cog"></i> Configurar</span>
                                 <i class="fas fa-chevron-right"></i>
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </div>
 
