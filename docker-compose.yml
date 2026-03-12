@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Node.js Express App
+  app:
+    build: .
+    container_name: shema_app
+    restart: always
+    expose:
+      - "3000"
+    env_file: .env
+    networks:
+      - shema_network
+    depends_on:
+      - redis
+      - evolution-api
+
+  # Nginx Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: shema_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - shema_network
+    depends_on:
+      - app
+
+  # Evolution API (WhatsApp)
+  evolution-api:
+    image: atendai/evolution-api:v1.8.2
+    container_name: shema_evolution_api
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - evolution_store:/evolution/store
+      - evolution_instances:/evolution/instances
+    networks:
+      - shema_network
+
+  # Redis
+  redis:
+    image: redis:alpine
+    container_name: shema_redis
+    networks:
+      - shema_network
+
+networks:
+  shema_network:
+    driver: bridge
+
+volumes:
+  evolution_store:
+  evolution_instances:
