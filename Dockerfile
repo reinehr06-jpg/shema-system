@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Instalar dependências para build de módulos nativos como better-sqlite3
 RUN apk add --no-cache python3 make g++
