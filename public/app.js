@@ -2158,14 +2158,29 @@ window.editTeam = async (id) => {
 
 // Folders and Trainings logic handled above in view-based functions
 
-// Ensure DOM is ready before attaching events and auto-login
-window.addEventListener('DOMContentLoaded', () => {
+// Auto-Cache Cleaner & Session Validation (v1.1.4)
+window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
 
-    if (localStorage.getItem('shema_user')) {
-        currentUser = JSON.parse(localStorage.getItem('shema_user'));
-        initApp();
+    const savedUser = localStorage.getItem('shema_user');
+    if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            // Validate if user still exists in DB
+            const res = await fetch(`${API_URL}/auth/me?accountId=${currentUser.account_id}`);
+            if (!res.ok) {
+                console.warn('Session invalid or account deleted. Clearing cache...');
+                localStorage.removeItem('shema_user');
+                currentUser = null;
+                return; // Stay on login screen
+            }
+            initApp();
+        } catch (e) {
+            console.error('Session validation failed:', e);
+            localStorage.removeItem('shema_user');
+            currentUser = null;
+        }
     }
 });
 
