@@ -2,7 +2,8 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-const db = new Database(path.join(__dirname, 'shema.db'));
+const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'shema.db');
+const db = new Database(DB_PATH);
 
 // Enable FKs
 db.pragma('foreign_keys = ON');

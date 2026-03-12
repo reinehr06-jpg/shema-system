@@ -9,10 +9,10 @@ services:
       - "3000:3000"
     volumes:
       - .:/app
-      - ./shema.db:/app/shema.db
-      - ./public/uploads:/app/public/uploads
+      - shema_db_data:/data
     environment:
       - PORT=3000
+      - DATABASE_PATH=/data/shema.db
     depends_on:
       - redis
       - evolution-api
@@ -55,3 +55,6 @@ services:
 networks:
   shema-network:
     driver: bridge
+
+volumes:
+  shema_db_data:
