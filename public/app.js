@@ -473,9 +473,9 @@ function showTab(tabId) {
     if (tabId === 'teamCalendar') { loadTeamCalendar(); }
     if (tabId === 'connections') { loadConnectionsContent(); }
     if (tabId === 'whatsapp') { loadConnectionsContent(); loadWhatsAppStatus(); }
+    if (tabId === 'profile') loadAccountPage();
     if (tabId === 'userDashboard') { loadAvailabilityCalendar(); }
     if (tabId === 'member_portal') { loadMemberPortal(); }
-    if (tabId === 'profile') { loadAccountPage(); }
 }
 
 async function loadMemberPortal() {
@@ -624,9 +624,16 @@ window.navigateBack = () => {
             hideTrainingForms();
             return;
         }
-        // If inside a folder
         if (currentFolderId) {
             loadTrainings();
+            return;
+        }
+    }
+
+    if (currentTab === 'profile') {
+        const overview = document.getElementById('account-overview');
+        if (overview && overview.style.display === 'none') {
+            backToAccountGrid();
             return;
         }
     }
@@ -3588,7 +3595,7 @@ async function loadAccountPage() {
     }
 }
 
-function showAccountSection(section) {
+window.showAccountSection = function(section) {
     const overview = document.getElementById('account-overview');
     if (overview) overview.style.display = 'none';
     document.querySelectorAll('.account-detail-view').forEach(v => v.style.display = 'none');
@@ -3604,13 +3611,13 @@ function showAccountSection(section) {
     if (section === 'preferencias') loadAccountPreferencias();
 }
 
-function backToAccountGrid() {
+window.backToAccountGrid = function() {
     document.querySelectorAll('.account-detail-view').forEach(v => v.style.display = 'none');
     const overview = document.getElementById('account-overview');
     if (overview) overview.style.display = '';
 }
 
-function filterAccountCards(value) {
+window.filterAccountCards = function(value) {
     const q = value.toLowerCase();
     document.querySelectorAll('.account-card').forEach(card => {
         const text = card.textContent.toLowerCase();
