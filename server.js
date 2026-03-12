@@ -1265,7 +1265,12 @@ app.get('/api/google-calendar/status', (req, res) => {
 });
 
 app.get('/api/google-calendar/auth-url', (req, res) => {
+    console.log('--- Google OAuth Config Check ---');
+    console.log('GOOGLE_CLIENT_ID:', GOOGLE_CLIENT_ID ? 'PRESENT' : 'MISSING');
+    console.log('GOOGLE_REDIRECT_URI:', GOOGLE_REDIRECT_URI);
+    
     if (!GOOGLE_CLIENT_ID) {
+        console.error('GOOGLE_CLIENT_ID is missing');
         return res.status(500).json({ error: 'Configuração OAuth do Google ausente no servidor (.env).' });
     }
     const scopes = encodeURIComponent('https://www.googleapis.com/auth/calendar.readonly');
