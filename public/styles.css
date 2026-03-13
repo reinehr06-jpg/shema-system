@@ -1,7 +1,7 @@
 :root {
     --primary: #1EBE5D;
     --primary-gradient: linear-gradient(135deg, #2ecc71 0%, #1EBE5D 100%);
-    --bg-gradient: linear-gradient(135deg, #27ae60 0%, #a8e063 100%);
+    --bg-gradient: linear-gradient(135deg, #1e272e 0%, #1EBE5D 100%);
     --primary-dark: #1a9e4e;
     --secondary: #C9A227;
     --bg-main: #f0f2f5;
@@ -248,13 +248,23 @@ body {
     width: 100%;
     max-width: 420px;
     padding: 20px;
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .auth-header {
-    background: white;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: 40px 20px 20px 20px;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-bottom: none;
 }
 
 .auth-logo {
@@ -263,10 +273,14 @@ body {
 }
 
 .auth-box {
-    background: white;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: 30px 40px 40px 40px;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    box-shadow: var(--shadow-premium);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-top: none;
 }
 
 .auth-box h2 {
@@ -339,8 +353,13 @@ body {
 }
 
 .auth-btn-access:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     background: var(--primary-dark);
+    box-shadow: 0 6px 20px rgba(30, 190, 93, 0.4);
+}
+
+.auth-btn-access:active {
+    transform: translateY(0);
 }
 
 .forgot-link-wrap {

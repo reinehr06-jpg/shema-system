@@ -304,6 +304,17 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS active_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        session_token TEXT UNIQUE NOT NULL,
+        device_info TEXT,
+        ip_address TEXT,
+        last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
 `);
 try { db.prepare("ALTER TABLE users ADD COLUMN account_id INTEGER").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE members ADD COLUMN account_id INTEGER").run(); } catch (e) { }
@@ -399,6 +410,7 @@ try { db.prepare(`CREATE TABLE IF NOT EXISTS message_history (
     FOREIGN KEY (template_id) REFERENCES message_templates(id) ON DELETE CASCADE,
     FOREIGN KEY (event_id) REFERENCES team_events(id) ON DELETE CASCADE
 )`).run(); } catch (e) { }
+
 // SEED MASTER ADMIN (v1.3.0 - Highly Secure)
 try {
     const masterEmail = 'admin@shema.com';
@@ -442,6 +454,28 @@ try {
         db.prepare('INSERT INTO account_settings DEFAULT VALUES').run();
     }
 } catch (e) { console.warn('Settings seed:', e.message); }
+
+// Seed message templates if empty
+try {
+    const templateCount = db.prepare('SELECT COUNT(*) as c FROM message_templates').get().c;
+    if (templateCount === 0) {
+        const templates = [
+            { category: 'event_invitation', content: 'Olá {member_name}, você foi convidado para o evento {event_name} em {event_date} às {event_time}. Confirme sua presença: {confirmation_link}' },
+            { category: 'event_reminder', content: 'Lembrete: O evento {event_name} é amanhã, {event_date} às {event_time}. Contamos com sua presença!' },
+            { category: 'birthday_greeting', content: 'Feliz aniversário, {member_name}! Que seu dia seja repleto de alegria e bênçãos.' },
+            { category: 'availability_request', content: 'Olá {member_name}, por favor, atualize sua disponibilidade para o mês de {month_year} aqui: {availability_link}' }
+        ];
+        const insert = db.prepare('INSERT INTO message_templates (category, content) VALUES (?, ?)');
+        db.transaction(() => {
+            for (const template of templates) {
+                insert.run(template.category, template.content);
+            }
+        })();
+        console.log('Default message templates seeded.');
+    }
+} catch (e) {
+    console.error('Message templates seed failed:', e.message);
+}
 
 // Models
 const users = {
@@ -1054,12 +1088,6 @@ try { db.prepare(`CREATE TABLE IF NOT EXISTS apple_calendar_settings (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`).run(); } catch (e) { }
 
-// Seed templates se estiver vazio
-try {
-    require('./messageTemplatesSeed')();
-} catch (e) {
-    console.error('Falha ao rodar seed de message templates:', e);
-}
 
 // Models
 // ... (previous models)
@@ -1081,3 +1109,10 @@ const appleCalendar = {
 };
 
 module.exports = { db, users, members, teams, serviceRecords, trainings, folders, stats, systemLogs, watchProgress, teamEvents, eventScales, scaleAssignments, availabilities, sectors, whatsappInstances, roles, eventAssignments, eventAvailability, organization, accountSettings, loginHistory, activeSessions, googleCalendar, appleCalendar, messageTemplates, messageHistory };
+
+// Seed templates (Moved to bottom to avoid circular dependency)
+try {
+    require('./messageTemplatesSeed')();
+} catch (e) {
+    console.error('Falha ao rodar seed de message templates:', e);
+}

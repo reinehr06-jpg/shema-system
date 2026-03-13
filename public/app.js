@@ -1,4 +1,4 @@
-console.warn('--- SHEMA APP LOADED v1.0.2 ---');
+console.warn('--- SHEMA RESTORED v4.3.2 ---');
 const API_URL = '/api';
 let currentUser = null;
 
@@ -352,15 +352,15 @@ async function handleLogin(e) {
 
         if (data.success) {
             currentUser = data.user;
-            // Ensure account_id is stored with the user data
             localStorage.setItem('shema_user', JSON.stringify(currentUser));
-            initApp();
+            document.getElementById('auth-screen').classList.remove('active');
+            
+            // Show Master Nav if applicable
+            const masterNav = document.getElementById('nav-master');
+            if (masterNav) masterNav.style.display = (currentUser.role === 'master') ? 'block' : 'none';
 
-            if (currentUser.role === 'member_portal') {
-                showTab('member_portal');
-            } else {
-                showTab('dashboard');
-            }
+            showTab(currentUser.role === 'member_portal' ? 'member_portal' : 'dashboard');
+            initApp();
         } else {
             alert(data.error);
         }
@@ -531,6 +531,7 @@ function showTab(tabId) {
     if (tabId === 'teamCalendar') { loadTeamCalendar(); }
     if (tabId === 'connections') { loadConnectionsContent(); }
     if (tabId === 'whatsapp') { loadConnectionsContent(); loadWhatsAppStatus(); }
+    if (tabId === 'master') loadMasterDashboard();
     if (tabId === 'profile') {
         if (typeof window.loadAccountPage === 'function') window.loadAccountPage();
         else if (typeof loadAccountPage === 'function') loadAccountPage();
