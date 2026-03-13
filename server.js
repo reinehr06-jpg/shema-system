@@ -1564,3 +1564,12 @@ app.post('/api/master/impersonate', masterCheck, (req, res) => {
         res.json({ success: true, user: safeUser, account });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+    ========================================
+    🚀 SHEMA SERVER RUNNING
+    📡 Port: ${PORT}
+    ========================================
+    `);
+});
