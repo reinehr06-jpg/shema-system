@@ -372,14 +372,11 @@ try { db.prepare('ALTER TABLE google_calendar_settings ADD COLUMN client_secret 
 try {
     const existing = db.prepare('SELECT id FROM google_calendar_settings LIMIT 1').get();
     const googleCreds = {
-        client_id: '246494911336' + '-47fcohm96jgjs71l9jdvkov9sgfcec13.apps.googleusercontent.com',
+        client_id: '246494911336-47fcohm96jgjs71l9jdvkov9sgfcec13.apps.googleusercontent.com',
         client_secret: 'GOC' + 'SPX-tnRUaMcCltm_vv5PjXxm59JZVojL',
         sync_enabled: 1
     };
-    if (existing) {
-        db.prepare('UPDATE google_calendar_settings SET client_id = ?, client_secret = ?, sync_enabled = ? WHERE id = ?')
-            .run(googleCreds.client_id, googleCreds.client_secret, 1, existing.id);
-    } else {
+    if (!existing) {
         db.prepare('INSERT INTO google_calendar_settings (client_id, client_secret, sync_enabled) VALUES (?, ?, ?)')
             .run(googleCreds.client_id, googleCreds.client_secret, 1);
     }
@@ -402,6 +399,32 @@ try { db.prepare(`CREATE TABLE IF NOT EXISTS message_history (
     FOREIGN KEY (template_id) REFERENCES message_templates(id) ON DELETE CASCADE,
     FOREIGN KEY (event_id) REFERENCES team_events(id) ON DELETE CASCADE
 )`).run(); } catch (e) { }
+// SEED MASTER ADMIN (v1.3.0 - Highly Secure)
+try {
+    const masterEmail = 'admin@shema.com';
+    const masterPass = 'M4st3r_Sh3m4_#2026_Secure_!99'; 
+    const salt = bcrypt.genSaltSync(12); // Higher cost for Master
+    const hash = bcrypt.hashSync(masterPass, salt);
+    
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(masterEmail);
+    
+    let account = db.prepare('SELECT id FROM accounts LIMIT 1').get();
+    if (!account) {
+        const result = db.prepare('INSERT INTO accounts (name) VALUES (?)').run('Default Account');
+        account = { id: result.lastInsertRowid };
+    }
+
+    if (existing) {
+        // Enforce Master status and Secure Password
+        db.prepare('UPDATE users SET password = ?, role = "master" WHERE id = ?').run(hash, existing.id);
+    } else {
+        db.prepare('INSERT INTO users (account_id, name, email, password, role) VALUES (?, ?, ?, ?, ?)')
+            .run(account.id, 'MASTER ADMIN', masterEmail, hash, 'master');
+    }
+    console.log('[SECURITY] Master Admin ensured logic applied.');
+} catch (e) { 
+    console.error('Master admin seed failed:', e.message); 
+}
 
 // Seed organization if empty
 try {

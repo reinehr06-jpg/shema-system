@@ -1,5 +1,5 @@
 console.warn('--- SHEMA APP LOADED v1.0.2 ---');
-const API_URL = window.location.origin.includes('localhost') ? 'http://localhost:3002/api' : '/api';
+const API_URL = '/api';
 let currentUser = null;
 
 // ==========================================
@@ -197,11 +197,12 @@ async function handleForgot(e) {
         const res = await fetch(`${API_URL}/auth/forgot-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone })
+            body: JSON.stringify({ identifier: phone })
         });
         const data = await res.json();
         if (data.success) {
-            activeRecoveryTokenId = data.token_id;
+            // Updated to handle both cases if needed
+            activeRecoveryTokenId = data.token_id || ''; 
             document.getElementById('forgotForm').style.display = 'none';
             document.getElementById('recoveryTokenStep').style.display = 'block';
         } else {
@@ -209,6 +210,62 @@ async function handleForgot(e) {
         }
     } catch (err) { alert('Erro na conexão'); }
 }
+
+// ========================================
+// Master Admin Global Logic
+// ========================================
+
+window.loadMasterDashboard = async () => {
+    try {
+        const res = await fetch(`${API_URL}/master/accounts`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('masterTotalAccounts').textContent = data.accounts.length;
+            const table = document.getElementById('masterAccountsTable');
+            table.innerHTML = data.accounts.map(acc => `
+                <tr style="border-bottom: 1px solid #f1f2f6;">
+                    <td style="padding: 15px;">${acc.id}</td>
+                    <td style="padding: 15px;"><strong>${acc.name || 'Sem nome'}</strong></td>
+                    <td style="padding: 15px;">${acc.user_count}</td>
+                    <td style="padding: 15px;">${acc.member_count}</td>
+                    <td style="padding: 15px;">${new Date(acc.created_at).toLocaleDateString()}</td>
+                    <td style="padding: 15px;">
+                        <button class="btn-sm btn-outline" onclick="impersonateAccount(${acc.id})" style="background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-user-secret"></i> Acessar
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    } catch (e) { console.error('Master load error:', e); }
+};
+
+window.impersonateAccount = async (accountId) => {
+    if (!confirm('Deseja realmente personificar esta conta? Você será deslogado do Master.')) return;
+    try {
+        const res = await fetch(`${API_URL}/master/impersonate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountId, masterId: currentUser.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+            currentUser = data.user;
+            localStorage.setItem('shema_user', JSON.stringify(currentUser));
+            document.getElementById('auth-screen').classList.remove('active');
+            
+            // Show Master Nav if applicable
+            const masterNav = document.getElementById('nav-master');
+            if (masterNav) masterNav.style.display = (currentUser.role === 'master') ? 'block' : 'none';
+
+            showTab('dashboard');
+            renderDashboard();
+            window.location.reload(); 
+        } else {
+            alert(data.error);
+        }
+    } catch (e) { alert('Erro ao personificar conta'); }
+};
 
 async function handleRecoveryToken() {
     const token = document.getElementById('recoveryToken').value;

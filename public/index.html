@@ -27,115 +27,106 @@
             </div>
 
             <div class="auth-box">
+                <!-- Login Form -->
                 <form id="loginForm">
                     <h2>Entrar</h2>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="loginEmail" required>
+                    
+                    <div class="input-with-icon">
+                        <label><i class="fas fa-envelope"></i> Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-at"></i>
+                            <input type="email" id="loginEmail" placeholder="Digite seu email" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Senha</label>
-                        <input type="password" id="loginPassword" required>
+
+                    <div class="input-with-icon">
+                        <label><i class="fas fa-lock"></i> Senha</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-key"></i>
+                            <input type="password" id="loginPassword" placeholder="Digite sua senha" required>
+                        </div>
                     </div>
-                    <button type="submit" class="btn-primary full-width">Acessar</button>
-                    <div style="text-align: right; margin-top: 10px;">
-                        <a href="#" onclick="showForgot()"
-                            style="font-size: 0.85rem; color: var(--text-muted);">Esqueceu a senha?</a>
+
+                    <div class="forgot-link-wrap">
+                        <a href="#" onclick="showForgot()">Esqueceu a senha?</a>
                     </div>
-                    <p class="auth-switch">Não tem conta? <a href="#" onclick="showRegister()">Cadastre-se</a></p>
+
+                    <button type="submit" class="auth-btn-access">Acessar</button>
+                    
+                    <div class="auth-switch-box">
+                        Não tem conta? <a href="#" onclick="showRegister()">Cadastre-se</a>
+                    </div>
                 </form>
 
                 <!-- Password Recovery: Step 1 (Phone) -->
                 <form id="forgotForm" style="display: none;">
                     <h2>Recuperar Senha</h2>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
-                        Informe seu telefone cadastrado para receber um código por SMS.
+                        Informe seu telefone para receber um código por SMS.
                     </p>
-                    <div class="form-group">
-                        <label>Telefone</label>
-                        <input type="text" id="forgotPhone" required placeholder="Ex: 51988887777">
-                    </div>
-                    <button type="submit" class="btn-primary full-width">Enviar Código</button>
-                    <p class="auth-switch"><a href="#" onclick="showLogin()">Voltar ao Login</a></p>
-                </form>
-
-                <!-- Password Recovery: Step 2 (Token Verification) -->
-                <div id="recoveryTokenStep" style="display: none;">
-                    <h2>Código de Verificação</h2>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
-                        Insira o código de 6 dígitos que enviamos para o seu celular.
-                    </p>
-                    <div class="form-group">
-                        <label>Código SMS</label>
-                        <input type="text" id="recoveryToken" maxlength="6" required
-                            style="text-align: center; font-size: 1.2rem; letter-spacing: 5px;">
-                    </div>
-                    <button onclick="handleRecoveryToken()" class="btn-primary full-width">Verificar Código</button>
-                    <p class="auth-switch"><a href="#" onclick="showForgot()">Pedir novo código</a></p>
-                </div>
-
-                <!-- Password Recovery: Step 3 (CPF Verification) -->
-                <div id="recoveryCpfStep" style="display: none;">
-                    <h2>Confirmar Identidade</h2>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
-                        Para sua segurança, confirme o CPF do titular desta conta.
-                    </p>
-                    <div class="form-group" style="text-align: center; margin-bottom: 15px;">
-                        <span id="maskedCpfLabel"
-                            style="font-family: monospace; font-size: 1.1rem; color: var(--primary);">*******123</span>
-                    </div>
-                    <div class="form-group">
-                        <label>Informe o CPF completo</label>
-                        <input type="text" id="recoveryFullCpf" required placeholder="000.000.000-00">
-                    </div>
-                    <button onclick="handleRecoveryCpf()" class="btn-primary full-width">Validar CPF</button>
-                </div>
-
-                <!-- Password Recovery: Step 4 (New Password) -->
-                <form id="resetForm" style="display: none;">
-                    <h2>Nova Senha</h2>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
-                        Quase lá! Agora escolha uma nova senha segura.
-                    </p>
-                    <div class="form-group">
-                        <label>Nova Senha</label>
-                        <div class="password-wrapper">
-                            <input type="password" id="resetNewPassword" required>
-                            <i class="fas fa-eye" onclick="togglePasswordVisibility('resetNewPassword')"></i>
+                    <div class="input-with-icon">
+                        <label><i class="fas fa-phone"></i> Telefone</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-mobile-alt"></i>
+                            <input type="text" id="forgotPhone" required placeholder="Ex: 51988887777">
                         </div>
                     </div>
-                    <button type="submit" class="btn-primary full-width">Alterar Senha</button>
-                    <p class="auth-switch"><a href="#" onclick="showLogin()">Cancelar</a></p>
+                    <button type="submit" class="auth-btn-access">Enviar Código</button>
+                    <div class="auth-switch-box"><a href="#" onclick="showLogin()">Voltar ao Login</a></div>
+                </form>
+
+                <!-- Additional forms (register, recovery token, etc) should also be modernized -->
+                <!-- Recovery Step 2 -->
+                <div id="recoveryTokenStep" style="display: none;">
+                    <h2>Código SMS</h2>
+                    <div class="input-with-icon">
+                        <div class="input-wrapper" style="margin-top: 20px;">
+                            <input type="text" id="recoveryToken" maxlength="6" required
+                                style="text-align: center; font-size: 1.2rem; letter-spacing: 5px; padding-left: 14px;">
+                        </div>
+                    </div>
+                    <button onclick="handleRecoveryToken()" class="auth-btn-access">Verificar Código</button>
+                    <div class="auth-switch-box"><a href="#" onclick="showForgot()">Pedir novo código</a></div>
+                </div>
+
+                <!-- Recovery Step 3 -->
+                <div id="recoveryCpfStep" style="display: none;">
+                    <h2>Confirmar CPF</h2>
+                    <p id="maskedCpfLabel" style="text-align: center; font-weight: bold; margin-bottom: 15px; color: var(--primary);">*******123</p>
+                    <div class="input-with-icon">
+                        <div class="input-wrapper">
+                            <input type="text" id="recoveryFullCpf" required placeholder="000.000.000-00" style="padding-left: 14px;">
+                        </div>
+                    </div>
+                    <button onclick="handleRecoveryCpf()" class="auth-btn-access">Validar CPF</button>
+                </div>
+
+                <!-- Recovery Step 4 -->
+                <form id="resetForm" style="display: none;">
+                    <h2>Nova Senha</h2>
+                    <div class="input-with-icon">
+                        <div class="password-wrapper input-wrapper">
+                            <input type="password" id="resetNewPassword" required placeholder="Digite a nova senha" style="padding-left: 14px;">
+                        </div>
+                    </div>
+                    <button type="submit" class="auth-btn-access">Alterar Senha</button>
                 </form>
 
                 <form id="registerForm" style="display: none;">
                     <h2>Cadastro</h2>
-                    <div class="form-group">
-                        <label>Nome Completo</label>
-                        <input type="text" id="regName" required>
+                    <div class="input-with-icon">
+                        <input type="text" id="regName" required placeholder="Nome Completo" class="input-rounded" style="width:100%; padding: 12px; margin-bottom: 10px;">
+                        <input type="email" id="regEmail" required placeholder="Email" class="input-rounded" style="width:100%; padding: 12px; margin-bottom: 10px;">
+                        <input type="text" id="regCpfCnpj" required placeholder="CPF/CNPJ da Igreja" class="input-rounded" style="width:100%; padding: 12px; margin-bottom: 10px;">
+                        <input type="text" id="regPhone" required placeholder="Telefone (SMS)" class="input-rounded" style="width:100%; padding: 12px; margin-bottom: 10px;">
+                        <input type="password" id="regPassword" required placeholder="Senha" class="input-rounded" style="width:100%; padding: 12px; margin-bottom: 20px;">
                     </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="regEmail" required>
-                    </div>
-                    <div class="form-group">
-                        <label>CPF/CNPJ da Igreja</label>
-                        <input type="text" id="regCpfCnpj" required placeholder="000.000.000-00">
-                    </div>
-                    <div class="form-group">
-                        <label>Telefone</label>
-                        <input type="text" id="regPhone" required placeholder="Ex: 51988887777">
-                    </div>
-                    <div class="form-group">
-                        <label>Senha</label>
-                        <input type="password" id="regPassword" required>
-                    </div>
-
-                    <!-- Areas removed as per Phase 3 -->
-
-                    <button type="submit" class="btn-primary full-width">Cadastrar</button>
-                    <p class="auth-switch">Já tem conta? <a href="#" onclick="showLogin()">Entrar</a></p>
+                    <button type="submit" class="auth-btn-access">Cadastrar</button>
+                    <div class="auth-switch-box">Já tem conta? <a href="#" onclick="showLogin()">Entrar</a></div>
                 </form>
+            </div>
+        </div>
+    </div>
             </div>
         </div>
     </div>
@@ -151,6 +142,7 @@
                 <li onclick="showTab('members')"><i class="fas fa-address-book"></i> Cadastros</li>
                 <li onclick="showTab('teamCalendar')"><i class="fas fa-calendar-alt"></i> Calendário</li>
                 <li onclick="showTab('trainings')"><i class="fas fa-play-circle"></i> Treinamentos</li>
+                <li id="nav-master" style="display: none;" onclick="showTab('master')"><i class="fas fa-user-shield"></i> Painel Master</li>
             </ul>
             <div class="nav-right-icons">
                 <button class="nav-icon-btn" title="Notificações"><i class="fas fa-bell"></i></button>
@@ -1045,6 +1037,47 @@
 
                     <div id="availabilityCalendar" class="calendar-grid">
                         <!-- Dynamic Calendar -->
+                    </div>
+                </div>
+            </section>
+
+                    <!-- Master Admin Panel -->
+            <section id="master" class="tab-content">
+                <div class="header-flex">
+                    <h1 style="color: var(--danger);"><i class="fas fa-user-shield"></i> Painel Master Admin</h1>
+                    <p style="color: var(--text-muted);">Controle global do ecossistema Shemá</p>
+                </div>
+                
+                <div class="stats-cards" style="margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #fff5f5; color: var(--danger); padding: 15px; border-radius: 12px;"><i class="fas fa-building fa-2x"></i></div>
+                        <div class="stat-content" style="margin-top: 10px;">
+                            <span class="stat-label">Total de Contas</span>
+                            <h2 id="masterTotalAccounts" style="margin: 5px 0 0 0;">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cad-panel" style="margin-top: 30px; background: white; border-radius: 12px; box-shadow: var(--shadow-premium); overflow: hidden;">
+                    <div class="cad-panel-header" style="padding: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h3 style="margin: 0;">Gerenciamento de Instâncias</h3>
+                    </div>
+                    <div class="cad-table-wrapper">
+                        <table class="cad-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8fafc; text-align: left;">
+                                    <th style="padding: 15px;">ID</th>
+                                    <th style="padding: 15px;">Nome da Conta</th>
+                                    <th style="padding: 15px;">Usuários</th>
+                                    <th style="padding: 15px;">Membros</th>
+                                    <th style="padding: 15px;">Criada em</th>
+                                    <th style="padding: 15px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterAccountsTable">
+                                <tr><td colspan="6" style="text-align:center; padding: 40px;">Carregando contas...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>

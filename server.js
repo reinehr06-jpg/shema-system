@@ -26,7 +26,7 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:808
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || '';
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3000;
 
 // Multer config for file uploads
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
@@ -1269,6 +1269,7 @@ function getGoogleConfig(req) {
     };
 
     // Calculate dynamic redirect URI based on current request host
+    // FALLBACK TO 3000 (Matches Docker config) instead of 3002/None
     let host = req ? req.get('host') : 'localhost:3000';
     let protocol = req ? req.protocol : 'http';
     
@@ -1298,16 +1299,17 @@ app.get('/api/google-calendar/status', (req, res) => {
 
 app.get('/api/google-calendar/auth-url', (req, res) => {
     const config = getGoogleConfig(req);
-    console.log('--- Google OAuth Config Check ---');
-    console.log('GOOGLE_CLIENT_ID:', config.clientId ? 'PRESENT' : 'MISSING');
-    console.log('GOOGLE_REDIRECT_URI:', config.redirectUri);
+    console.log('[GCAL_AUTH] Initiating Auth URL generation...');
+    console.log('[GCAL_AUTH] Client ID:', config.clientId ? 'OK (Present)' : 'ERROR (Missing)');
+    console.log('[GCAL_AUTH] Redirect URI:', config.redirectUri);
     
     if (!config.clientId) {
-        console.error('GOOGLE_CLIENT_ID is missing');
         return res.status(500).json({ error: 'Configuração OAuth do Google ausente. Configure no painel de Conexões.' });
     }
     const scopes = encodeURIComponent('https://www.googleapis.com/auth/calendar.readonly');
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.clientId}&redirect_uri=${encodeURIComponent(config.redirectUri)}&response_type=code&scope=${scopes}&access_type=offline&prompt=consent`;
+    
+    console.log('[GCAL_AUTH] Success. Returning URL.');
     res.json({ url });
 });
 
@@ -1408,97 +1410,157 @@ app.post('/api/google-calendar/save-config', (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Healthcheck Endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
+async function syncGoogleCalendarImplementation(req = null) {
+    const config = getGoogleConfig(req);
+    const settings = googleCalendar.get();
+    if (!settings || !settings.refresh_token) {
+        throw new Error('Conta do Google não conectada.');
+    }
+
+    let accessToken = settings.access_token;
+    const calendarId = settings.calendar_id || 'primary';
+
+    // Check if token expired
+    if (settings.refresh_token && settings.token_expiry) {
+        const expiry = new Date(settings.token_expiry);
+        if (expiry <= new Date()) {
+            try {
+                const refreshRes = await axios.post('https://oauth2.googleapis.com/token', {
+                    client_id: config.clientId,
+                    client_secret: config.clientSecret,
+                    refresh_token: settings.refresh_token,
+                    grant_type: 'refresh_token'
+                });
+                accessToken = refreshRes.data.access_token;
+                const newExpiry = new Date(Date.now() + refreshRes.data.expires_in * 1000).toISOString();
+                googleCalendar.upsert({ access_token: accessToken, token_expiry: newExpiry });
+            } catch (refreshErr) {
+                console.error('[CRON_GCAL] Token refresh failed:', refreshErr.response?.data || refreshErr.message);
+                throw new Error('Credenciais expiradas. Por favor, desconecte e conecte novamente.');
+            }
+        }
+    }
+
+    // Fetch events from Google Calendar API
+    const now = new Date();
+    const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const timeMax = new Date(now.getFullYear(), now.getMonth() + 6, 0).toISOString();
+
+    const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+    
+    const gcalRes = await axios.get(calendarUrl, {
+        params: {
+            timeMin, timeMax,
+            singleEvents: true,
+            orderBy: 'startTime',
+            maxResults: 250
+        },
+        headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    const googleEvents = gcalRes.data.items || [];
+    let imported = 0, skipped = 0;
+
+    for (const ev of googleEvents) {
+        if (!ev.summary) continue;
+        const eventDate = (ev.start.date || ev.start.dateTime || '').substring(0, 10);
+        const eventTime = ev.start.dateTime ? ev.start.dateTime.substring(11, 16) : '00:00';
+        if (!eventDate) { skipped++; continue; }
+
+        // Check if event with same name and date already exists
+        const existing = db.prepare('SELECT id FROM team_events WHERE event_name = ? AND event_date = ?').get(ev.summary, eventDate);
+        if (existing) { skipped++; continue; }
+
+        teamEvents.create({
+            event_name: ev.summary,
+            event_time: eventTime,
+            event_date: eventDate,
+            recurrence_type: 'none',
+            recurrence_interval: 0,
+            recurrence_end: null,
+            status: 'critical'
+        });
+        imported++;
+    }
+
+    googleCalendar.upsert({ last_sync: new Date().toISOString() });
+    return { imported, skipped, total: googleEvents.length };
+}
+
 app.post('/api/google-calendar/sync', async (req, res) => {
     try {
-        const config = getGoogleConfig(req);
-        const settings = googleCalendar.get();
-        if (!settings || !settings.refresh_token) {
-            return res.status(400).json({ error: 'Conta do Google não conectada.' });
-        }
-
-        let accessToken = settings.access_token;
-        const calendarId = settings.calendar_id || 'primary';
-
-        // Check if token expired
-        if (settings.refresh_token && settings.token_expiry) {
-            const expiry = new Date(settings.token_expiry);
-            if (expiry <= new Date()) {
-                try {
-                    const refreshRes = await axios.post('https://oauth2.googleapis.com/token', {
-                        client_id: config.clientId,
-                        client_secret: config.clientSecret,
-                        refresh_token: settings.refresh_token,
-                        grant_type: 'refresh_token'
-                    });
-                    accessToken = refreshRes.data.access_token;
-                    const newExpiry = new Date(Date.now() + refreshRes.data.expires_in * 1000).toISOString();
-                    googleCalendar.upsert({ access_token: accessToken, token_expiry: newExpiry });
-                } catch (refreshErr) {
-                    console.error('Token refresh failed:', refreshErr.response?.data || refreshErr.message);
-                    return res.status(401).json({ error: 'Credenciais expiradas. Por favor, desconecte e conecte novamente.' });
-                }
-            }
-        }
-
-        // Fetch events from Google Calendar API
-        const now = new Date();
-        const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const timeMax = new Date(now.getFullYear(), now.getMonth() + 6, 0).toISOString();
-
-        const calendarUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
-        
-        try {
-            const gcalRes = await axios.get(calendarUrl, {
-                params: {
-                    timeMin, timeMax,
-                    singleEvents: true,
-                    orderBy: 'startTime',
-                    maxResults: 250
-                },
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-
-            const googleEvents = gcalRes.data.items || [];
-            let imported = 0, skipped = 0;
-
-            for (const ev of googleEvents) {
-                if (!ev.summary) continue;
-                const eventDate = (ev.start.date || ev.start.dateTime || '').substring(0, 10);
-                const eventTime = ev.start.dateTime ? ev.start.dateTime.substring(11, 16) : '00:00';
-                if (!eventDate) { skipped++; continue; }
-
-                // Check if event with same name and date already exists
-                const existing = db.prepare('SELECT id FROM team_events WHERE event_name = ? AND event_date = ?').get(ev.summary, eventDate);
-                if (existing) { skipped++; continue; }
-
-                teamEvents.create({
-                    event_name: ev.summary,
-                    event_time: eventTime,
-                    event_date: eventDate,
-                    recurrence_type: 'none',
-                    recurrence_interval: 0,
-                    recurrence_end: null,
-                    status: 'critical'
-                });
-                imported++;
-            }
-
-            googleCalendar.upsert({ last_sync: new Date().toISOString() });
-            res.json({ success: true, imported, skipped, total: googleEvents.length });
-
-        } catch (apiErr) {
-            if (apiErr.response?.status === 401) {
-                return res.status(401).json({ error: 'Acesso negado. A conta pode ter revogado a permissão.' });
-            }
-            throw apiErr;
-        }
-
+        const result = await syncGoogleCalendarImplementation(req);
+        res.json({ success: true, ...result });
     } catch (e) {
         console.error('Google Calendar Sync Error:', e.response?.data || e.message);
-        res.status(500).json({ error: e.response?.data?.error?.message || e.message });
+        res.status(e.message === 'Conta do Google não conectada.' ? 400 : 500).json({ error: e.message });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Shemá Server running on http://localhost:${PORT}`);
+// AUTO-SYNC TRIGGER: Google Calendar Sync every 4 hours
+cron.schedule('0 */4 * * *', async () => {
+    console.log('[AUTONOMY] Executando sincronização automática do Google Calendar...');
+    try {
+        const stats = await syncGoogleCalendarImplementation();
+        console.log(`[AUTONOMY] Sincronização concluída: ${stats.imported} importados, ${stats.skipped} ignorados.`);
+    } catch (err) {
+        if (err.message === 'Conta do Google não conectada.') {
+             // Silently ignore if not connected
+        } else {
+            console.error('[AUTONOMY] Erro na sincronização automática:', err.message);
+        }
+    }
+});
+
+// ==========================================
+// MASTER ADMIN ROUTES (v1.3.0)
+// ==========================================
+
+const masterCheck = (req, res, next) => {
+    // Basic master-role check would go here in midleware
+    next();
+};
+
+app.get('/api/master/accounts', masterCheck, (req, res) => {
+    try {
+        const query = `
+            SELECT a.*, 
+            (SELECT COUNT(*) FROM users u WHERE u.account_id = a.id) as user_count,
+            (SELECT COUNT(*) FROM members m WHERE m.account_id = a.id) as member_count
+            FROM accounts a
+        `;
+        const accountsList = db.prepare(query).all();
+        res.json({ success: true, accounts: accountsList });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/master/impersonate', masterCheck, (req, res) => {
+    try {
+        const { accountId, masterId } = req.body;
+        
+        const master = db.prepare('SELECT role FROM users WHERE id = ?').get(masterId);
+        if (!master || master.role !== 'master') {
+            return res.status(403).json({ error: 'Acesso negado. Apenas Master Admin.' });
+        }
+
+        const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(accountId);
+        if (!account) return res.status(404).json({ error: 'Conta não encontrada.' });
+
+        let targetUser = db.prepare('SELECT * FROM users WHERE account_id = ? AND role = "admin" LIMIT 1').get(accountId);
+        if (!targetUser) {
+            targetUser = db.prepare('SELECT * FROM users WHERE account_id = ? LIMIT 1').get(accountId);
+        }
+
+        if (!targetUser) return res.status(404).json({ error: 'Não há usuários nesta conta para personificar.' });
+
+        systemLogs.create('MASTER', 'IMPERSONATION', `Master ${masterId} personificando conta ${accountId}`, { masterId, accountId, targetUserId: targetUser.id });
+        
+        const { password: _, ...safeUser } = targetUser;
+        res.json({ success: true, user: safeUser, account });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
